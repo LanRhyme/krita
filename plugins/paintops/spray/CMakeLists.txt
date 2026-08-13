@@ -1,5 +1,6 @@
 set(kritaspraypaintop_SOURCES
     spray_paintop_plugin.cpp
+    register_static.cpp
     kis_spray_paintop.cpp
     kis_spray_paintop_settings.cpp
     kis_spray_paintop_settings_widget.cpp

@@ -1,5 +1,6 @@
 set(kritacurvepaintop_SOURCES
       curve_paintop_plugin.cpp
+    register_static.cpp
       kis_curve_paintop.cpp
       kis_curve_paintop_settings.cpp
       kis_curve_paintop_settings_widget.cpp

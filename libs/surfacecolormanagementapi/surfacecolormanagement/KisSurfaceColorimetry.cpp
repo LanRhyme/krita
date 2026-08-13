@@ -95,7 +95,7 @@ QDebug operator<<(QDebug debug, const ColorSpace &value) {
     std::visit([&] (auto &&v) {debug.nospace() << "primaries: " << v; }, value.primaries);
     std::visit([&] (auto &&v) {debug.nospace() << ", transferFunction: " << v; }, value.transferFunction);
     if (value.luminance) {
-        debug.nospace() << ", luminance: " << value.luminance;
+        debug.nospace() << ", luminance: " << value.luminance->minLuminance;
     } else {
         debug.nospace() << ", luminance: " << "<none>";
     }

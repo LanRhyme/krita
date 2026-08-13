@@ -8,6 +8,8 @@
 #define KOSHAPEBULKACTIONLOCK_H
 
 #include "kritaflake_export.h"
+#include <unordered_map>
+#include <vector>
 
 #include <KisAdaptedLock.h>
 #include <QList>

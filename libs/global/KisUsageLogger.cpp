@@ -6,6 +6,9 @@
 #include "KisUsageLogger.h"
 
 #include <QScreen>
+#ifdef Q_OS_ANDROID
+#include <QJniObject>
+#endif
 #include <QGlobalStatic>
 #include <QDebug>
 #include <QDateTime>
@@ -154,9 +157,9 @@ QString KisUsageLogger::basicSystemInfo()
 
 #ifdef Q_OS_ANDROID
     QString manufacturer =
-        QAndroidJniObject::getStaticObjectField("android/os/Build", "MANUFACTURER", "Ljava/lang/String;").toString();
+        QJniObject::getStaticObjectField("android/os/Build", "MANUFACTURER", "Ljava/lang/String;").toString();
     const QString model =
-        QAndroidJniObject::getStaticObjectField("android/os/Build", "MODEL", "Ljava/lang/String;").toString();
+        QJniObject::getStaticObjectField("android/os/Build", "MODEL", "Ljava/lang/String;").toString();
     manufacturer[0] = manufacturer[0].toUpper();
     systemInfo.append("\n  Product Model: ").append(manufacturer + " " + model);
 #elif defined(Q_OS_LINUX)

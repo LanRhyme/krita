@@ -1,6 +1,7 @@
 set(kritadeformpaintop_SOURCES
     deform_brush.cpp
     deform_paintop_plugin.cpp
+    register_static.cpp
     kis_deform_paintop.cpp
     kis_deform_paintop_settings.cpp
     kis_deform_paintop_settings_widget.cpp

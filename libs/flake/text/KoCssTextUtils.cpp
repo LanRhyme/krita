@@ -332,10 +332,10 @@ bool KoCssTextUtils::characterCanHang(const QChar c, KoSvgText::HangingPunctuati
         if (c.category() == QChar::Punctuation_InitialQuote || // Pi
             c.category() == QChar::Punctuation_Open || // Ps
             c.category() == QChar::Punctuation_FinalQuote || // Pf
-            c == "\u0027" || // Apostrophe
-            c == "\uFF07" || // Fullwidth Apostrophe
-            c == "\u0022" || // Quotation Mark
-            c == "\uFF02") { // Fullwidth Quotation Mark
+            (c == QStringLiteral("\u0027").at(0)) || // Apostrophe
+            (c == QStringLiteral("\uFF07").at(0)) || // Fullwidth Apostrophe
+            (c == QStringLiteral("\u0022").at(0)) || // Quotation Mark
+            c == QStringLiteral("\uFF02")) { // Fullwidth Quotation Mark
             return true;
         }
     }
@@ -343,27 +343,27 @@ bool KoCssTextUtils::characterCanHang(const QChar c, KoSvgText::HangingPunctuati
         if (c.category() == QChar::Punctuation_InitialQuote || // Pi
             c.category() == QChar::Punctuation_FinalQuote || // Pf
             c.category() == QChar::Punctuation_Close || // Pe
-            c == "\u0027" || // Apostrophe
-            c == "\uFF07" || // Fullwidth Apostrophe
-            c == "\u0022" || // Quotation Mark
-            c == "\uFF02") { // Fullwidth Quotation Mark
+            (c == QStringLiteral("\u0027").at(0)) || // Apostrophe
+            (c == QStringLiteral("\uFF07").at(0)) || // Fullwidth Apostrophe
+            (c == QStringLiteral("\u0022").at(0)) || // Quotation Mark
+            c == QStringLiteral("\uFF02")) { // Fullwidth Quotation Mark
             return true;
         }
     }
     if (hangType.testFlag(KoSvgText::HangEnd)) {
-        if (c == "\u002c" || // Comma
-            c == "\u002e" || // Full Stop
-            c == "\u060c" || // Arabic Comma
-            c == "\u06d4" || // Arabic Full Stop
-            c == "\u3001" || // Ideographic Comma
-            c == "\u3002" || // Ideographic Full Stop
-            c == "\uff0c" || // Fullwidth Comma
-            c == "\uff0e" || // Fullwidth full stop
-            c == "\ufe50" || // Small comma
-            c == "\ufe51" || // Small ideographic comma
-            c == "\ufe52" || // Small full stop
-            c == "\uff61" || // Halfwidth ideographic full stop
-            c == "\uff64" // halfwidth ideographic comma
+        if ((c == QStringLiteral("\u002c").at(0)) || // Comma
+            (c == QStringLiteral("\u002e").at(0)) || // Full Stop
+            (c == QStringLiteral("\u060c").at(0)) || // Arabic Comma
+            (c == QStringLiteral("\u06d4").at(0)) || // Arabic Full Stop
+            (c == QStringLiteral("\u3001").at(0)) || // Ideographic Comma
+            (c == QStringLiteral("\u3002").at(0)) || // Ideographic Full Stop
+            (c == QStringLiteral("\uff0c").at(0)) || // Fullwidth Comma
+            (c == QStringLiteral("\uff0e").at(0)) || // Fullwidth full stop
+            (c == QStringLiteral("\ufe50").at(0)) || // Small comma
+            (c == QStringLiteral("\ufe51").at(0)) || // Small ideographic comma
+            (c == QStringLiteral("\ufe52").at(0)) || // Small full stop
+            (c == QStringLiteral("\uff61").at(0)) || // Halfwidth ideographic full stop
+            (c == QStringLiteral("\uff64").at(0)) // halfwidth ideographic comma
         ) {
             return true;
         }
@@ -373,12 +373,12 @@ bool KoCssTextUtils::characterCanHang(const QChar c, KoSvgText::HangingPunctuati
 
 bool KoCssTextUtils::IsCssWordSeparator(const QString grapheme)
 {
-    return (grapheme == "\u0020" || // Space
-        grapheme == "\u00A0" || // No Break Space
-        grapheme == "\u1361" || // Ethiopic Word Space
-        grapheme == "\u10100" || // Aegean Word Sepator Line
-        grapheme == "\u10101" || // Aegean Word Sepator Dot
-        grapheme == "\u1039F");
+    return (grapheme == QStringLiteral("\u0020") || // Space
+        grapheme == QStringLiteral("\u00A0") || // No Break Space
+        grapheme == QStringLiteral("\u1361") || // Ethiopic Word Space
+        grapheme == QStringLiteral("\u10100") || // Aegean Word Sepator Line
+        grapheme == QStringLiteral("\u10101") || // Aegean Word Sepator Dot
+        grapheme == QStringLiteral("\u1039F"));
 }
 
 QStringList KoCssTextUtils::textToUnicodeGraphemeClusters(const QString &text, const QString &langCode)

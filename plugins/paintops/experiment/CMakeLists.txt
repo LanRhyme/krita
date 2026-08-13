@@ -1,5 +1,6 @@
 set(kritaexperimentpaintop_SOURCES
     experiment_paintop_plugin.cpp
+    register_static.cpp
     kis_experiment_paintop.cpp
     kis_experiment_paintop_settings.cpp
     kis_experiment_paintop_settings_widget.cpp

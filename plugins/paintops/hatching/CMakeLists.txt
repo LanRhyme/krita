@@ -1,5 +1,6 @@
 set(kritahatchingpaintop_SOURCES
     hatching_paintop_plugin.cpp
+    register_static.cpp
     kis_hatching_paintop.cpp
     kis_hatching_paintop_settings.cpp
     kis_hatching_paintop_settings_widget.cpp

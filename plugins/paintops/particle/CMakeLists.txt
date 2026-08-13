@@ -1,5 +1,6 @@
 set(kritaparticlepaintop_SOURCES
     particle_paintop_plugin.cpp
+    register_static.cpp
     kis_particle_paintop.cpp
     kis_particle_paintop_settings.cpp
     kis_particle_paintop_settings_widget.cpp

@@ -8,6 +8,7 @@
 #define _KISBASEACCESSOR_H_
 
 #include <kritaimage_export.h>
+#include <QtGlobal>
 #include <kis_shared.h>
 
 class KRITAIMAGE_EXPORT KisBaseConstAccessor : public KisShared

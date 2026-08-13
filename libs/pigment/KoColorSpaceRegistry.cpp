@@ -794,7 +794,7 @@ const KoColorProfile *KoColorSpaceRegistry::profileForQColorSpace(const QColorSp
 {
     if (!space.isValid()) return p709SRGBProfile();
     const KoColorProfile *profile = nullptr;
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0)) || (QT_VERSION < QT_VERSION_CHECK(6, 7, 0) && QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
     ColorPrimaries primaries = mapQColorSpaceColorPrimaries.value(space.primaries(), PRIMARIES_UNSPECIFIED);
     TransferCharacteristics transfer = mapQColorSpaceColorTransfer.value(space.transferFunction(), TRC_UNSPECIFIED);
     if (space.transferFunction() == QColorSpace::TransferFunction::Gamma || (transfer == TRC_UNSPECIFIED && primaries == PRIMARIES_UNSPECIFIED)) {

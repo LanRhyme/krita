@@ -569,9 +569,7 @@ endif()
 if(ANDROID)
     list(APPEND kritaui_LIB_SRCS
         KisAndroidDonations.cpp
-        animation/KisAndroidMediaEncoderRunnable.cpp
         animation/KisMediaEncoderFormatPreferencesDialog.cpp
-        animation/KisMediaEncoderWrapper.cpp
     )
 endif()
 
@@ -788,7 +786,7 @@ endif()
 if (ANDROID)
     target_link_libraries(kritaui PRIVATE GLESv3)
     target_link_libraries(kritaui PUBLIC Qt${QT_MAJOR_VERSION}::Gui)
-    target_link_libraries(kritaui PRIVATE Qt${QT_MAJOR_VERSION}::AndroidExtras)
+    target_link_libraries(kritaui PRIVATE Qt6::Core Qt6::Gui)
     if(TARGET LibAV)
         target_link_libraries(kritaui PRIVATE LibAV)
     endif()

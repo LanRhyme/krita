@@ -1,5 +1,6 @@
 set(kritaroundmarkerpaintop_SOURCES
     roundmarker_paintop_plugin.cpp
+    register_static.cpp
     kis_roundmarkerop.cpp
     kis_roundmarkerop_settings.cpp
     kis_roundmarkerop_settings_widget.cpp

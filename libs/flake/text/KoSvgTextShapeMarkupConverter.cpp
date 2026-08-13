@@ -141,10 +141,10 @@ bool KoSvgTextShapeMarkupConverter::convertFromSvg(const QString &svgText, const
         QDomElement el = node.toElement();
         if (el.isNull()) continue;
 
-        if (el.tagName() == "defs") {
+        if (el.tagName() == QStringLiteral("defs")) {
             parser.parseDefsElement(el);
         }
-        else if (el.tagName() == "text") {
+        else if (el.tagName() == QStringLiteral("text")) {
             if (textNodeFound) {
                 d->errors << i18n("More than one 'text' node found!");
                 return false;
@@ -232,7 +232,7 @@ bool KoSvgTextShapeMarkupConverter::convertFromHtml(const QString &htmlText, QSt
         case QXmlStreamReader::StartElement:
         {
             newLine = false;
-            if (htmlReader.name() == "br") {
+            if (htmlReader.name() == QStringLiteral("br")) {
                 debugFlake << "\tdoing br";
                 svgWriter.writeEndElement();
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
@@ -248,13 +248,13 @@ bool KoSvgTextShapeMarkupConverter::convertFromHtml(const QString &htmlText, QSt
                 em = "";
             }
 
-            if (elementName == "body") {
+            if (elementName == QStringLiteral("body")) {
                 debugFlake << "\tstart Element" << elementName;
                 svgWriter.writeStartElement(elName);
                 firstElement = false;
                 appendStyle = QString();
             }
-            else if (elementName == "p") {
+            else if (elementName == QStringLiteral("p")) {
                 // new line
                 debugFlake << "\t\tstart Element" << elementName;
                 svgWriter.writeStartElement(elName);
@@ -266,31 +266,31 @@ bool KoSvgTextShapeMarkupConverter::convertFromHtml(const QString &htmlText, QSt
                 }
                 lineCount++;
             }
-            else if (elementName == "span") {
+            else if (elementName == QStringLiteral("span")) {
                 debugFlake << "\tstart Element" << elementName;
                 svgWriter.writeStartElement(elName);
                 firstElement = false;
                 appendStyle = QString();
             }
-            else if (elementName == "b" || elementName == "strong") {
+            else if (elementName == QStringLiteral("b") || elementName == QStringLiteral("strong")) {
                 debugFlake << "\tstart Element" << elementName;
                 svgWriter.writeStartElement(elName);
                 firstElement = false;
                 appendStyle = "font-weight:700;";
             }
-            else if (elementName == "i" || elementName == "em") {
+            else if (elementName == QStringLiteral("i") || elementName == QStringLiteral("em")) {
                 debugFlake << "\tstart Element" << elementName;
                 svgWriter.writeStartElement(elName);
                 firstElement = false;
                 appendStyle = "font-style:italic;";
             }
-            else if (elementName == "u") {
+            else if (elementName == QStringLiteral("u")) {
                 debugFlake << "\tstart Element" << elementName;
                 svgWriter.writeStartElement(elName);
                 firstElement = false;
                 appendStyle = "text-decoration:underline";
             }
-            else if (elementName == "font") {
+            else if (elementName == QStringLiteral("font")) {
                 debugFlake << "\tstart Element" << elementName;
                 svgWriter.writeStartElement(elName);
                 firstElement = false;
@@ -299,7 +299,7 @@ bool KoSvgTextShapeMarkupConverter::convertFromHtml(const QString &htmlText, QSt
                     svgWriter.writeAttribute("fill", htmlReader.attributes().value("color").toString());
                 }
             }
-            else if (elementName == "pre") {
+            else if (elementName == QStringLiteral("pre")) {
                 debugFlake << "\tstart Element" << elementName;
                 svgWriter.writeStartElement(elName);
                 firstElement = false;
@@ -333,15 +333,15 @@ bool KoSvgTextShapeMarkupConverter::convertFromHtml(const QString &htmlText, QSt
                     }
 
                     if (QString(style.at(0)).trimmed() == "line-height"){
-                        if (style.at(1).contains("%")) {
+                        if (QString(style.at(1)).contains("%")) {
                             double percentage = QString(style.at(1)).remove("%").toDouble();
                             em = QString::number(percentage/100.0)+"em";
-                        } else if(style.at(1).contains("em")) {
+                        } else if(QString(style.at(1)).contains("em")) {
                             em = style.at(1);
-                        } else if(style.at(1).contains("px")) {
+                        } else if(QString(style.at(1)).contains("px")) {
                             em = style.at(1);
                         }
-                        if (elementName == "body") {
+                        if (elementName == QStringLiteral("body")) {
                             bodyEm = em;
                         }
                     }
@@ -373,8 +373,8 @@ bool KoSvgTextShapeMarkupConverter::convertFromHtml(const QString &htmlText, QSt
         }
         case QXmlStreamReader::EndElement:
         {
-            if (htmlReader.name() == "br") break;
-            if (elementName == "p" || spanLikes.contains(elementName) || elementName == "body") {
+            if (htmlReader.name() == QStringLiteral("br")) break;
+            if (elementName == QStringLiteral("p") || spanLikes.contains(elementName) || elementName == QStringLiteral("body")) {
                 debugFlake << "\tEndElement" <<  htmlReader.name() << "(" << elementName << ")";
                 svgWriter.writeEndElement();
             }
@@ -382,7 +382,7 @@ bool KoSvgTextShapeMarkupConverter::convertFromHtml(const QString &htmlText, QSt
         }
         case QXmlStreamReader::Characters:
         {
-            if (elementName == "style") {
+            if (elementName == QStringLiteral("style")) {
                 *styles = htmlReader.text().toString();
             }
             else {
@@ -876,7 +876,7 @@ void parseTextAttributes(const QXmlStreamAttributes &elementAttributes,
     // we convert all the presentation attributes into styles
     QString presentationAttributes;
     for (int a = 0; a < elementAttributes.size(); a++) {
-        if (elementAttributes.at(a).name() != "style") {
+        if (elementAttributes.at(a).name() != QStringLiteral("style")) {
             presentationAttributes
                     .append(elementAttributes.at(a).name().toString())
                     .append(":")
@@ -1008,7 +1008,7 @@ bool KoSvgTextShapeMarkupConverter::convertSvgToDocument(const QString &svgText,
                     return previousBlockAbsoluteXOffset && blockAbsoluteXOffset
                         && qFuzzyCompare(*previousBlockAbsoluteXOffset, *blockAbsoluteXOffset);
                 };
-                if ((isSameXOffset() || thisBlockAlignment != prevBlockAlignment) && svgReader.name() != "text"
+                if ((isSameXOffset() || thisBlockAlignment != prevBlockAlignment) && svgReader.name() != QStringLiteral("text")
                     && elementAttributes.hasAttribute("dy")) {
 
                     QString dyString = elementAttributes.value("dy").toString();
@@ -1016,7 +1016,7 @@ bool KoSvgTextShapeMarkupConverter::convertSvgToDocument(const QString &svgText,
                         dyString = dyString.remove("pt").trimmed();
                     }
 
-                    KIS_SAFE_ASSERT_RECOVER_NOOP(formatStack.isEmpty() == (svgReader.name() == "text"));
+                    KIS_SAFE_ASSERT_RECOVER_NOOP(formatStack.isEmpty() == (svgReader.name() == QStringLiteral("text")));
 
                     absoluteLineOffset = fixToQtDpi(KisDomUtils::toDouble(dyString));
                     newBlock = absoluteLineOffset > 0;
@@ -1062,7 +1062,7 @@ bool KoSvgTextShapeMarkupConverter::convertSvgToDocument(const QString &svgText,
         }
         case QXmlStreamReader::EndElement:
         {
-            if (svgReader.name() != "text") {
+            if (svgReader.name() != QStringLiteral("text")) {
                 formatStack.pop();
                 KIS_SAFE_ASSERT_RECOVER(!formatStack.isEmpty()) { break; }
 

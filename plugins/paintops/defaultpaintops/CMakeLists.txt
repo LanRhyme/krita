@@ -19,6 +19,7 @@ set(kritadefaultpaintops_SOURCES
         duplicate/KisDuplicateOptionData.cpp
         duplicate/KisDuplicateOptionModel.cpp
         duplicate/KisDuplicateOptionWidget.cpp
+        register_static.cpp
     )
 
 ki18n_wrap_ui(kritadefaultpaintops_SOURCES duplicate/wdgduplicateop.ui )

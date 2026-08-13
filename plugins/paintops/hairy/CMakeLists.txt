@@ -1,5 +1,6 @@
 set(kritahairypaintop_SOURCES
     hairy_paintop_plugin.cpp
+    register_static.cpp
     kis_hairy_paintop.cpp
     kis_hairy_paintop_settings.cpp
     kis_hairy_paintop_settings_widget.cpp

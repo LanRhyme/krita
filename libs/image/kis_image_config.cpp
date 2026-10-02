@@ -141,7 +141,7 @@ void KisImageConfig::setSchedulerBalancingRatio(qreal value)
 int KisImageConfig::maxSwapSize(bool requestDefault) const
 {
     return !requestDefault ?
-        m_config.readEntry("maxSwapSize", 4096) : 4096; // in MiB
+        m_config.readEntry("maxSwapSize", 8192) : 8192; // in MiB
 }
 
 void KisImageConfig::setMaxSwapSize(int value)
@@ -206,7 +206,7 @@ void KisImageConfig::setMemoryHardLimitPercent(qreal value)
 qreal KisImageConfig::memorySoftLimitPercent(bool requestDefault) const
 {
     return !requestDefault ?
-        m_config.readEntry("memorySoftLimitPercent", 2.) : 2.;
+        m_config.readEntry("memorySoftLimitPercent", 50.) : 50.;
 }
 
 void KisImageConfig::setMemorySoftLimitPercent(qreal value)

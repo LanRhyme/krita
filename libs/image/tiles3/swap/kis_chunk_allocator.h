@@ -81,11 +81,15 @@ public:
 class KRITAIMAGE_EXPORT KisChunk
 {
 public:
-    KisChunk() {}
+    KisChunk() : m_valid(false) {}
 
     KisChunk(KisChunkDataListIterator iterator)
-        : m_iterator(iterator)
+        : m_iterator(iterator), m_valid(true)
     {
+    }
+
+    inline bool isValid() const {
+        return m_valid;
     }
 
     inline quint64 begin() const {
@@ -110,6 +114,7 @@ public:
 
 private:
     KisChunkDataListIterator m_iterator;
+    bool m_valid {false};
 };
 
 

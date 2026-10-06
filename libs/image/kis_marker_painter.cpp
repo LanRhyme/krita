@@ -8,6 +8,7 @@
 
 #include <KoColor.h>
 #include <KoColorSpace.h>
+#include <KoCompositeOpRegistry.h>
 
 #include "kis_paint_device.h"
 
@@ -72,6 +73,8 @@ void KisMarkerPainter::fillHalfBrushDiff(const QPointF &p1, const QPointF &p2, c
 
     KIS_SAFE_ASSERT_RECOVER_RETURN(isRectInValidRange(alignedRect));
 
+    const KoCompositeOp *op = cs->compositeOp(COMPOSITE_OVER);
+
     KisSequentialIterator it(m_d->device, alignedRect);
 
     while (it.nextPixel()) {
@@ -93,9 +96,12 @@ void KisMarkerPainter::fillHalfBrushDiff(const QPointF &p1, const QPointF &p2, c
 
         const quint8 srcAlpha = fadePos > 0 ? quint8((1.0 - fadePos) * 255.0) : 255;
 
-        // ReveriePaint: standard overwrite behaviour (see fillFullCircle)
         currentColor.setOpacity(srcAlpha);
-        memcpy(it.rawData(), currentColor.data(), pixelSize);
+        if (op) {
+            op->composite(it.rawData(), pixelSize, currentColor.data(), pixelSize, nullptr, 0, 1, 1, OPACITY_OPAQUE_F);
+        } else {
+            memcpy(it.rawData(), currentColor.data(), pixelSize);
+        }
     }
 }
 
@@ -105,6 +111,7 @@ void KisMarkerPainter::fillFullCircle(const QPointF &center, qreal radius)
 
     const int pixelSize = m_d->device->pixelSize();
     const KoColorSpace *cs = m_d->device->colorSpace();
+    const KoCompositeOp *op = cs->compositeOp(COMPOSITE_OVER);
 
     const qreal fadedRadius = radius + 1;
     QRectF boundRect(center.x() - fadedRadius, center.y() - fadedRadius,
@@ -125,12 +132,12 @@ void KisMarkerPainter::fillFullCircle(const QPointF &center, qreal radius)
 
         const quint8 srcAlpha = value3 > 0 ? quint8((1.0 - value3) * 255.0) : 255;
 
-        // ReveriePaint: standard painter's brush behaviour - always paint
-        // with the new colour (Krita's marker "only darken" behaviour made
-        // a new colour invisible over existing opaque pixels, which users
-        // perceived as broken colour layering)
         currentColor.setOpacity(srcAlpha);
-        memcpy(it.rawData(), currentColor.data(), pixelSize);
+        if (op) {
+            op->composite(it.rawData(), pixelSize, currentColor.data(), pixelSize, nullptr, 0, 1, 1, OPACITY_OPAQUE_F);
+        } else {
+            memcpy(it.rawData(), currentColor.data(), pixelSize);
+        }
     }
 }
 

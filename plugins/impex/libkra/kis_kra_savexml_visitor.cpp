@@ -324,6 +324,10 @@ void KisSaveXmlVisitor::loadLayerAttributes(const QDomElement &el, KisLayer *lay
         layer->setUserLocked(el.attribute(LOCKED).toInt());
     }
 
+    if (el.hasAttribute(CLIPPED)) {
+        layer->enableClippingLayer(el.attribute(CLIPPED).toInt());
+    }
+
     if (el.hasAttribute(X)) {
         layer->setX(el.attribute(X).toInt());
     }
@@ -385,6 +389,7 @@ void KisSaveXmlVisitor::saveLayer(QDomElement & el, const QString & layerType, c
     el.setAttribute(COMPOSITE_OP, layer->compositeOp()->id());
     el.setAttribute(VISIBLE, layer->visible());
     el.setAttribute(LOCKED, layer->userLocked());
+    el.setAttribute(CLIPPED, layer->clippingEnabled());
     el.setAttribute(NODE_TYPE, layerType);
     el.setAttribute(FILE_NAME, filename);
     el.setAttribute(X, layer->x());

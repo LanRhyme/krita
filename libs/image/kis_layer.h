@@ -132,6 +132,16 @@ public:
     bool alphaChannelDisabled() const;
 
     /**
+     * set/unset layer properties flag for the clipping of this layer
+     */
+    void enableClippingLayer(bool enable);
+
+    /**
+     * returns true if clipping is enabled for this layer
+     */
+    bool clippingEnabled() const;
+
+    /**
      * set the channelflags for this layer to the specified bit array.
      * The bit array must have exactly the same number of channels as
      * the colorspace this layer is in, or be empty, in which case all

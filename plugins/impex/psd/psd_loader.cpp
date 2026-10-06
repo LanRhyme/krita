@@ -562,6 +562,9 @@ KisImportExportErrorCode PSDLoader::decode(QIODevice &io)
                 m_image->addNode(layer, m_image->root());
             }
             layer->setVisible(layerRecord->visible);
+            if (layerRecord->clipping == 1) {
+                layer->enableClippingLayer(true);
+            }
             newLayer = layer;
 
         }

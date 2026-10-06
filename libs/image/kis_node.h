@@ -306,6 +306,26 @@ public: // Graph methods
     KisNodeSP nextSibling() const;
 
     /**
+     * Returns true if previous layer has Clipping ON
+     */
+    bool isClippingPrevSibling() const;
+
+    /**
+     * Returns true if next layer has Clipping ON
+     */
+    bool isClippingNextSibling() const;
+
+    /**
+     * Returns list of nodes clipped to current node
+     */
+    QList<KisNodeSP> gatherClippingLayers() const;
+
+    /**
+     * Returns node the current layer is clipped to or nullptr
+     */
+    KisNodeSP findClippingBase() const;
+
+    /**
      * Returns how many direct child nodes this node has (not
      * recursive).
      */

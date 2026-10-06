@@ -115,9 +115,15 @@ bool KisNodePropertyListCommand::mergeWith(const KUndo2Command *command)
         const QSet<QString> changedInTheMeantime =
             changedProperties(m_newPropertyList, other->m_oldPropertyList);
 
+        static const QSet<QString> allowedMidAir = {
+            KisLayerPropertiesIcons::colorOverlay.id(),
+            KisLayerPropertiesIcons::clippingLayer.id(),
+            KisLayerPropertiesIcons::inheritAlpha.id()
+        };
+
         KIS_SAFE_ASSERT_RECOVER_NOOP(changedInTheMeantime.isEmpty() ||
                                      (changedInTheMeantime.size() == 1 &&
-                                      *changedInTheMeantime.begin() == KisLayerPropertiesIcons::colorOverlay.id()));
+                                      allowedMidAir.contains(*changedInTheMeantime.begin())));
 
         m_newPropertyList = other->m_newPropertyList;
         return true;

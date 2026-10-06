@@ -1031,6 +1031,11 @@ KisNodeSP KisKraLoader::loadNode(const QDomElement& element, KisImageSP image)
         QBitArray channelFlags    = stringToFlags(element.attribute(CHANNEL_FLAGS, ""), colorSpace->channelCount());
         layer->setChannelFlags(channelFlags);
 
+        if (element.hasAttribute(CLIPPED)) {
+            bool clipped = element.attribute(CLIPPED, "0") != "0";
+            layer->enableClippingLayer(clipped);
+        }
+
         if (element.hasAttribute(LAYER_STYLE_UUID)) {
             QString uuidString = element.attribute(LAYER_STYLE_UUID);
             QUuid uuid(uuidString);

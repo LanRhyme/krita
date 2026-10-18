@@ -20,11 +20,12 @@
 #include <MyPaintCurveRangeModel.h>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <KisStaticInitializer.h>
+void initMyPaintSensors()
+{
+    static bool initialized = false;
+    if (initialized) return;
+    initialized = true;
 
-namespace detail {
-
-KIS_DECLARE_STATIC_INITIALIZER {
     auto addFactory = [](const KoID &id,
                          int minimumValue,
                          int maximumValue,
@@ -45,10 +46,12 @@ KIS_DECLARE_STATIC_INITIALIZER {
     addFactory(MyPaintRandomId,  0, 1, "", "", "");
     addFactory(MyPaintStrokeId, 0, 1, "", "", "");
     addFactory(MyPaintDirectionId, 0, 180, "", "", "");
-    addFactory(MyPaintDeclinationId, 0, 90, "", "", i18n("%"));
-    addFactory(MyPaintAscensionId, -180, 180, "", "", i18n("%"));
-    addFactory(MyPaintCustomId, -20, 20, "", "", i18n("%"));
+    addFactory(MyPaintDeclinationId, 0, 90, "", "", QStringLiteral("%"));
+    addFactory(MyPaintAscensionId, -180, 180, "", "", QStringLiteral("%"));
+    addFactory(MyPaintCustomId, -20, 20, "", "", QStringLiteral("%"));
 }
+
+namespace detail {
 
 template <typename Data,
           typename SensorData =
@@ -139,6 +142,7 @@ MyPaintSensorData::MyPaintSensorData()
       sensorAscension(MyPaintAscensionId),
       sensorCustom(MyPaintCustomId)
 {
+    initMyPaintSensors();
     sensorPressure.isActive = true;
 }
 

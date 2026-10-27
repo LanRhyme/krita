@@ -92,4 +92,6 @@ private:
     MyPaintSensorData m_data;
 };
 
+void initMyPaintSensors();
+
 #endif // MYPAINTSENSORPACK_H

@@ -14,9 +14,11 @@
 
 #include "MyPaintPaintOpFactory.h"
 #include "MyPaintPaintOpPreset.h"
+#include "MyPaintSensorPack.h"
 
 extern "C" __attribute__((visibility("default"))) void krita_register_mypaint_paintop()
 {
+    initMyPaintSensors();
     KisResourceLoaderRegistry::instance()->registerLoader(
         new KisResourceLoader<KisMyPaintPaintOpPreset>(
             ResourceSubType::MyPaintPaintOpPresets,

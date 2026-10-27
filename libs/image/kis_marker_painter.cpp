@@ -92,12 +92,10 @@ void KisMarkerPainter::fillHalfBrushDiff(const QPointF &p1, const QPointF &p2, c
         qreal fadePos = value3;
 
         const quint8 srcAlpha = fadePos > 0 ? quint8((1.0 - fadePos) * 255.0) : 255;
-        const quint8 dstAlpha = cs->opacityU8(it.rawData());
 
-        if (srcAlpha > dstAlpha) {
-            currentColor.setOpacity(srcAlpha);
-            memcpy(it.rawData(), currentColor.data(), pixelSize);
-        }
+        // ReveriePaint: standard overwrite behaviour (see fillFullCircle)
+        currentColor.setOpacity(srcAlpha);
+        memcpy(it.rawData(), currentColor.data(), pixelSize);
     }
 }
 
@@ -126,12 +124,13 @@ void KisMarkerPainter::fillFullCircle(const QPointF &center, qreal radius)
         if (value3 > 1.0) continue;
 
         const quint8 srcAlpha = value3 > 0 ? quint8((1.0 - value3) * 255.0) : 255;
-        const quint8 dstAlpha = cs->opacityU8(it.rawData());
 
-        if (srcAlpha > dstAlpha) {
-            currentColor.setOpacity(srcAlpha);
-            memcpy(it.rawData(), currentColor.data(), pixelSize);
-        }
+        // ReveriePaint: standard painter's brush behaviour - always paint
+        // with the new colour (Krita's marker "only darken" behaviour made
+        // a new colour invisible over existing opaque pixels, which users
+        // perceived as broken colour layering)
+        currentColor.setOpacity(srcAlpha);
+        memcpy(it.rawData(), currentColor.data(), pixelSize);
     }
 }
 

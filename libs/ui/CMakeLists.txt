@@ -578,6 +578,8 @@ if(ANDROID)
     list(APPEND kritaui_LIB_SRCS
         KisAndroidDonations.cpp
         animation/KisMediaEncoderFormatPreferencesDialog.cpp
+        animation/KisMediaEncoderWrapper.cpp
+        animation/KisMediaEncoderRunnables_stub.cpp
     )
 endif()
 

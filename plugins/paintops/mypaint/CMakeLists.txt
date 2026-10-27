@@ -25,7 +25,7 @@ kis_add_library(kritamypaintop_static STATIC ${kritamypaintop_SOURCES})
 
 target_link_libraries(kritamypaintop_static kritalibpaintop LibMyPaint::mypaint kritawidgetutils kritaui kritalibbrush kritaresources)
 
-kis_add_library(kritamypaintop MODULE MyPaintPaintOpPlugin.cpp)
+kis_add_library(kritamypaintop MODULE MyPaintPaintOpPlugin.cpp register_static.cpp)
 
 target_link_libraries(kritamypaintop kritamypaintop_static)
 

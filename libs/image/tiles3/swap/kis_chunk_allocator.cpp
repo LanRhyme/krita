@@ -70,10 +70,12 @@ KisChunk KisChunkAllocator::getChunk(quint64 size)
             return WRAP_PREVIOUS_CHUNK_DATA(m_iterator);
     }
 
-    qFatal("KisChunkAllocator: out of swap space");
+    qWarning("KisChunkAllocator: out of swap space (requested size %llu, storeSize %llu, maxSize %llu)",
+             static_cast<unsigned long long>(size),
+             static_cast<unsigned long long>(m_storeSize),
+             static_cast<unsigned long long>(m_storeMaxSize));
 
-    // just let gcc be happy! :)
-    return KisChunk(m_list.end());
+    return KisChunk();
 }
 
 bool KisChunkAllocator::tryInsertChunk(KisChunkDataList &list,

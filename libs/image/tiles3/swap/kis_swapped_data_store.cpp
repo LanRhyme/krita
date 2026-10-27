@@ -63,8 +63,13 @@ bool KisSwappedDataStore::trySwapOutTileData(KisTileData *td)
     m_compressor->compressTileData(td, (quint8*) m_buffer.data(), m_buffer.size(), bytesWritten);
 
     KisChunk chunk = m_allocator->getChunk(bytesWritten);
+    if (!chunk.isValid()) {
+        qWarning() << "swap out of tile failed: allocator returned invalid chunk";
+        return false;
+    }
     quint8 *ptr = m_swapSpace->getWriteChunkPtr(chunk);
     if (!ptr) {
+        m_allocator->freeChunk(chunk);
         qWarning() << "swap out of tile failed";
         return false;
     }

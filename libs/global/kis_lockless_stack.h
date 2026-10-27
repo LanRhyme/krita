@@ -18,6 +18,7 @@
 #define __KIS_LOCKLESS_STACK_H
 
 #include <QAtomicPointer>
+#include <QtGlobal>
 
 template<class T>
 class KisLocklessStack

@@ -64,7 +64,7 @@ public:
             return { sRGBColorSpace };
         } else if (colorSpace == QColorSpace::SRgbLinear) {
             return { scRGBColorSpace };
-        } else if (colorSpace == QColorSpace::Bt2100Pq) {
+        } else if (colorSpace == QColorSpace::SRgbLinear) {
             return { bt2020PQColorSpace };
         } else {
             qWarning() << "WARNING: KisSurfaceColorSpaceWrapper: unsupported surface color space" << colorSpace;
@@ -117,7 +117,7 @@ public:
         case scRGBColorSpace:
             return QColorSpace::SRgbLinear;
         case bt2020PQColorSpace:
-            return QColorSpace::Bt2100Pq;
+            return QColorSpace::SRgbLinear;
         }
         
         Q_UNREACHABLE_RETURN(QColorSpace());

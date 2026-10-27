@@ -1,5 +1,6 @@
 set(kritasketchpaintop_SOURCES
     sketch_paintop_plugin.cpp
+    register_static.cpp
     kis_sketch_paintop.cpp
     kis_sketch_paintop_settings.cpp
     kis_sketch_paintop_settings_widget.cpp

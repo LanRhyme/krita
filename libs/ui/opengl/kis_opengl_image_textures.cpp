@@ -6,11 +6,13 @@
 
 #include "opengl/kis_opengl_image_textures.h"
 
-#ifdef QT_OPENGL_ES_2
+#if defined(Q_OS_ANDROID)
 #include <qopengl.h>
-#endif
-
-#ifndef QT_OPENGL_ES_2
+#include <GLES3/gl3.h>
+#elif defined(QT_OPENGL_ES_2)
+#include <qopengl.h>
+#else
+#include <qopengl.h>
 #include <QOpenGLFunctions>
 #endif
 #include <QOpenGLContext>
@@ -574,14 +576,14 @@ void initializeRGBA16FTextures(QOpenGLContext *ctx, KisGLTexturesInfo &texturesI
         dbgUI << "Pixel type half (GLES or GL3)";
         texturesInfo.format = GL_RGBA;
     } else if (haveBuiltInOpenExr && ctx->hasExtension("GL_ARB_half_float_pixel")) {
-        texturesInfo.internalFormat = GL_RGBA16F_ARB;
+        texturesInfo.internalFormat = GL_RGBA16F;
         dbgUI << "Using ARB half";
-        texturesInfo.type = GL_HALF_FLOAT_ARB;
+        texturesInfo.type = GL_HALF_FLOAT;
         destinationColorDepthId = Float16BitsColorDepthID;
         texturesInfo.format = GL_RGBA;
         dbgUI << "Pixel type half";
     } else if (haveBuiltInOpenExr && ctx->hasExtension("GL_ATI_texture_float")) {
-        texturesInfo.internalFormat = GL_RGBA_FLOAT16_ATI;
+        texturesInfo.internalFormat = GL_RGBA16F;
         dbgUI << "Using ATI half";
         texturesInfo.type = GL_HALF_FLOAT;
         destinationColorDepthId = Float16BitsColorDepthID;
@@ -693,13 +695,13 @@ void KisOpenGLImageTextures::updateTextureFormat()
                 m_texturesInfo.format = GL_RGBA;
                 destinationColorDepthId = Float32BitsColorDepthID;
             } else if (ctx->hasExtension("GL_ARB_texture_float")) {
-                m_texturesInfo.internalFormat = GL_RGBA32F_ARB;
+                m_texturesInfo.internalFormat = GL_RGBA32F;
                 dbgUI << "Using ARB float";
                 m_texturesInfo.type = GL_FLOAT;
                 m_texturesInfo.format = GL_RGBA;
                 destinationColorDepthId = Float32BitsColorDepthID;
             } else if (ctx->hasExtension("GL_ATI_texture_float")) {
-                m_texturesInfo.internalFormat = GL_RGBA_FLOAT32_ATI;
+                m_texturesInfo.internalFormat = GL_RGBA32F;
                 dbgUI << "Using ATI float";
                 m_texturesInfo.type = GL_FLOAT;
                 m_texturesInfo.format = GL_RGBA;

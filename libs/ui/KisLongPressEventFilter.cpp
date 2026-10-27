@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "KisLongPressEventFilter.h"
+#if defined(Q_OS_ANDROID)
+#include <QJniObject>
+#endif
 #include <KisKineticScroller.h>
 #include <QAbstractButton>
 #include <QAbstractScrollArea>
@@ -18,7 +21,6 @@
 #include <QStyleHints>
 #include <QTimer>
 #ifdef Q_OS_ANDROID
-#include <QtAndroid>
 #endif
 
 KisLongPressEventFilter::KisLongPressEventFilter(QObject *parent)
@@ -30,7 +32,7 @@ KisLongPressEventFilter::KisLongPressEventFilter(QObject *parent)
     connect(m_timer, &QTimer::timeout, this, &KisLongPressEventFilter::triggerLongPress);
 #ifdef Q_OS_ANDROID
     m_longPressTimeout =
-        QAndroidJniObject::callStaticMethod<jint>("org/krita/android/MainActivity", "getLongPressTimeout", "()I");
+        QJniObject::callStaticMethod<jint>("org/krita/android/MainActivity", "getLongPressTimeout", "()I");
 #endif
 }
 

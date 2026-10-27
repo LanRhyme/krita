@@ -1,5 +1,6 @@
 set(kritagridpaintop_SOURCES
     grid_paintop_plugin.cpp
+    register_static.cpp
     kis_grid_paintop.cpp
     KisGridOpOptionData.cpp
     KisGridOpOptionModel.cpp

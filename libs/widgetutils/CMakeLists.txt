@@ -146,7 +146,7 @@ if (APPLE)
 endif ()
 
 if (ANDROID)
-    target_link_libraries(kritawidgetutils PRIVATE Qt${QT_MAJOR_VERSION}::AndroidExtras)
+    target_link_libraries(kritawidgetutils PRIVATE Qt6::Core Qt6::Gui)
 endif()
 
 target_link_libraries(kritawidgetutils

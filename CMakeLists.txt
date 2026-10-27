@@ -1530,16 +1530,8 @@ if(ANDROID)
         PURPOSE "Needed to find ffmpeg libraries on Android."
     )
 
-    pkg_check_modules(LibAV REQUIRED IMPORTED_TARGET GLOBAL
-        libavcodec
-        libavfilter
-        libavformat
-        libavutil
-        libswscale
-    )
-    if(TARGET PkgConfig::LibAV)
-        add_library(LibAV ALIAS PkgConfig::LibAV)
-    endif()
+    # FFmpeg disabled for initial Android build (video encoding later)
+    set(LibAV_FOUND FALSE)
 
     # The PkgConfig and FeatureSummary modules don't play nice with each other
     # on their own, so this has to be set manually for the summary to show up.
@@ -1552,7 +1544,7 @@ if(ANDROID)
     set_package_properties(LibAV PROPERTIES
         DESCRIPTION "FFmpeg libraries"
         URL "https://ffmpeg.org/"
-        TYPE REQUIRED
+        TYPE OPTIONAL
         PURPOSE "Needed to render animations and timelapses on Android."
     )
 endif()

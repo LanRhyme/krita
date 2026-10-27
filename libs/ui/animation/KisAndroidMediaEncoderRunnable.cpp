@@ -14,12 +14,14 @@
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <QJniEnvironment>
+#if defined(Q_OS_ANDROID)
 #include <QJniObject>
+#endif
 #else
-#include <QAndroidJniEnvironment>
-#include <QAndroidJniObject>
-using QJniEnvironment = QAndroidJniEnvironment;
-using QJniObject = QAndroidJniObject;
+#include <QJniEnvironment>
+#include <QJniObject>
+using QJniEnvironment = QJniEnvironment;
+using QJniObject = QJniObject;
 #endif
 
 #include <klocalizedstring.h>

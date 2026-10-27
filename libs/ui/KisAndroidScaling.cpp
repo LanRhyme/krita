@@ -13,10 +13,12 @@
 #include <qpa/qplatformscreen.h>
 
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if defined(Q_OS_ANDROID)
 #include <QJniObject>
+#endif
 #else
-#include <QAndroidJniObject>
-using QJniObject = QAndroidJniObject;
+#include <QJniObject>
+using QJniObject = QJniObject;
 #endif
 
 KisAndroidScaling::KisAndroidScaling(KisConfig &cfg, KisApplication *app)

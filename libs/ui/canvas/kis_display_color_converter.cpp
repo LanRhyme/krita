@@ -9,6 +9,7 @@
 #include <QGlobalStatic>
 #include <QPointer>
 #include <QPalette>
+#include <QApplication>
 
 #include <KoColor.h>
 #include <KoColorDisplayRendererInterface.h>

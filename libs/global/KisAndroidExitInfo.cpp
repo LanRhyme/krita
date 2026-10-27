@@ -3,14 +3,15 @@
  */
 #include "KisAndroidUtils.h"
 #include "KisAndroidExitInfo.h"
-#include <QAndroidJniEnvironment>
-#include <QAndroidJniObject>
-#include <QtAndroid>
+#include <QJniEnvironment>
+#if defined(Q_OS_ANDROID)
+#include <QJniObject>
+#endif
 
 KisAndroidExitInfo KisAndroidExitInfo::getLast()
 {
-    QAndroidJniEnvironment env;
-    QAndroidJniObject activity = QAndroidJniObject::callStaticObjectMethod("org/qtproject/qt5/android/QtNative",
+    QJniEnvironment env;
+    QJniObject activity = QJniObject::callStaticObjectMethod("org/qtproject/qt5/android/QtNative",
                                                                            "activity",
                                                                            "()Landroid/app/Activity;");
     if (env->ExceptionCheck()) {
@@ -23,7 +24,7 @@ KisAndroidExitInfo KisAndroidExitInfo::getLast()
         return KisAndroidExitInfo();
     }
 
-    QAndroidJniObject exitInfo =
+    QJniObject exitInfo =
         activity.callObjectMethod("getLastApplicationExitInfo", "()Landroid/app/ApplicationExitInfo;");
     if (env->ExceptionCheck()) {
         qWarning("KisAndroidExitInfo::getLast: JNI exception in getLastApplicationExitInfo");
@@ -61,7 +62,7 @@ KisAndroidExitInfo KisAndroidExitInfo::getLast()
 
     QString description;
     {
-        QAndroidJniObject descriptionObject = exitInfo.callObjectMethod("getDescription", "()Ljava/lang/String;");
+        QJniObject descriptionObject = exitInfo.callObjectMethod("getDescription", "()Ljava/lang/String;");
         if (env->ExceptionCheck()) {
             qWarning("KisAndroidExitInfo::getLast: JNI exception in getDescription");
             env->ExceptionDescribe();

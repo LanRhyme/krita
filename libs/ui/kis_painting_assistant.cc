@@ -641,10 +641,10 @@ void KisPaintingAssistant::loadXml(KoStore* store, QMap<int, KisPaintingAssistan
     while (!xml.atEnd()) {
         switch (xml.readNext()) {
         case QXmlStreamReader::StartElement:
-            if (xml.name() == "assistant") {
+            if (xml.name() == QStringLiteral("assistant")) {
 
                 auto active = xml.attributes().value("active");
-                setSnappingActive( (active != "0")  );
+                setSnappingActive( (active != QStringLiteral("0"))  );
 
                 // load custom shared assistant properties
                 if ( xml.attributes().hasAttribute("useCustomColor")) {
@@ -671,14 +671,14 @@ void KisPaintingAssistant::loadXml(KoStore* store, QMap<int, KisPaintingAssistan
 
                 if ( xml.attributes().hasAttribute("locked")) {
                     auto locked = xml.attributes().value("locked");
-                    setLocked(locked == "1");
+                    setLocked(locked == QStringLiteral("1"));
                 }
 
             }
 
             loadCustomXml(&xml);
 
-            if (xml.name() == "handle") {
+            if (xml.name() == QStringLiteral("handle")) {
                 QString strId = xml.attributes().value("id").toString(),
                         strX = xml.attributes().value("x").toString(),
                         strY = xml.attributes().value("y").toString();
@@ -691,7 +691,7 @@ void KisPaintingAssistant::loadXml(KoStore* store, QMap<int, KisPaintingAssistan
                     }
                 }
                 addHandle(handleMap.value(id), HandleType::NORMAL);
-            } else if (xml.name() == "sidehandle") {
+            } else if (xml.name() == QStringLiteral("sidehandle")) {
                 QString strId = xml.attributes().value("id").toString(),
                         strX = xml.attributes().value("x").toString(),
                         strY = xml.attributes().value("y").toString();

@@ -58,7 +58,8 @@ KisToolGradient::KisToolGradient(KoCanvasBase * canvas)
     m_startPos = QPointF(0, 0);
     m_endPos = QPointF(0, 0);
 
-    m_dither = false;
+    m_dither = KisGradientPainter::DitherNone;
+    m_ditherSteps = KisGradientPainter::defaultDitherSteps;
     m_reverse = false;
     m_shape = KisGradientPainter::GradientShapeLinear;
     m_repeat = KisGradientPainter::GradientRepeatNone;
@@ -164,7 +165,8 @@ void KisToolGradient::endPrimaryAction(KoPointerEvent *event)
             new KisCommandUtils::LambdaCommand(
                 [resources, startPos = m_startPos, endPos = m_endPos,
                  shape = m_shape, repeat = m_repeat, reverse = m_reverse,
-                 antiAliasThreshold = m_antiAliasThreshold, dither = m_dither] () mutable {
+                 antiAliasThreshold = m_antiAliasThreshold, dither = m_dither,
+                 ditherSteps = m_ditherSteps] () mutable {
 
                     KisNodeSP node = resources->currentNode();
                     KisPaintDeviceSP device = node->paintDevice();
@@ -182,7 +184,7 @@ void KisToolGradient::endPrimaryAction(KoPointerEvent *event)
                                           repeat, antiAliasThreshold,
                                           reverse, 0, 0,
                                           bounds.width(), bounds.height(),
-                                          dither);
+                                          dither, ditherSteps);
 
                     return painter.endAndTakeTransaction();
                 }));
@@ -262,6 +264,23 @@ QWidget* KisToolGradient::createOptionWidget()
     addOptionWidgetOption(m_cmbRepeat, m_lbRepeat);
     connect(m_cmbRepeat, SIGNAL(currentIndexChanged(int)), this, SLOT(slotSetRepeat(int)));
 
+    m_lbDither = new QLabel(i18n("Dither:"), widget);
+    m_cmbDither = new KComboBox(widget);
+    m_cmbDither->setObjectName("dither");
+    m_cmbDither->addItem(i18nc("The gradient will not be dithered", "None"));
+    m_cmbDither->addItem(i18nc("The gradient will be dithered with Blue Noise", "Blue Noise"));
+    m_cmbDither->addItem(i18nc("The gradient will be dithered with Bayer Matrix 2x2", "Bayer Matrix 2x2"));
+    m_cmbDither->addItem(i18nc("The gradient will be dithered with Bayer Matrix 4x4", "Bayer Matrix 4x4"));
+    m_cmbDither->addItem(i18nc("The gradient will be dithered with Bayer Matrix 8x8", "Bayer Matrix 8x8"));
+    addOptionWidgetOption(m_cmbDither, m_lbDither);
+    connect(m_cmbDither, SIGNAL(currentIndexChanged(int)), this, SLOT(slotSetDither(int)));
+
+    m_lbDitherSteps = new QLabel(i18n("Dither steps:"), widget);
+    m_sbDitherSteps = new KisIntParseSpinBox(widget);
+    m_sbDitherSteps->setObjectName("dither_steps");
+    m_sbDitherSteps->setRange(2, 10000);
+    addOptionWidgetOption(m_sbDitherSteps, m_lbDitherSteps);
+    connect(m_sbDitherSteps, SIGNAL(valueChanged(int)), this, SLOT(slotSetDitherSteps(int)));
 
     m_lbAntiAliasThreshold = new QLabel(i18n("Anti-alias threshold:"), widget);
     m_slAntiAliasThreshold = new KisDoubleSliderSpinBox(widget);
@@ -276,16 +295,10 @@ QWidget* KisToolGradient::createOptionWidget()
     connect(m_ckReverse, SIGNAL(toggled(bool)), this, SLOT(slotSetReverse(bool)));
     addOptionWidgetOption(m_ckReverse);
 
-    m_ckDither = new QCheckBox(i18nc("the gradient will be dithered", "Dither"), widget);
-    m_ckDither->setObjectName("dither_check");
-    connect(m_ckDither, SIGNAL(toggled(bool)), this, SLOT(slotSetDither(bool)));
-    addOptionWidgetOption(m_ckDither);
-
-    widget->setFixedHeight(widget->sizeHint().height());
-
 
     // load configuration settings into widget (updating UI will update internal variables from signals/slots)
-    m_ckDither->setChecked(m_configGroup.readEntry<bool>("dither", false));
+    slotSetDither((int)m_configGroup.readEntry("dither", 0));
+    m_sbDitherSteps->setValue((int)m_configGroup.readEntry("ditherSteps", KisGradientPainter::defaultDitherSteps));
     m_ckReverse->setChecked((bool)m_configGroup.readEntry("reverse", false));
     m_cmbShape->setCurrentIndex((int)m_configGroup.readEntry("shape", 0));
     m_cmbRepeat->setCurrentIndex((int)m_configGroup.readEntry("repeat", 0));
@@ -312,10 +325,22 @@ void KisToolGradient::slotSetReverse(bool state)
     m_configGroup.writeEntry("reverse", state);
 }
 
-void KisToolGradient::slotSetDither(bool state)
+void KisToolGradient::slotSetDither(int dither)
 {
-    m_dither = state;
-    m_configGroup.writeEntry("dither", state);
+    if (m_cmbDither->currentIndex() != dither) {
+        m_cmbDither->setCurrentIndex(dither);
+    }
+
+    m_dither = static_cast<KisGradientPainter::enumDither>(dither);
+    m_configGroup.writeEntry("dither", dither);
+
+    showControl(m_sbDitherSteps, KisGradientPainter::isBayerDither(m_dither));
+}
+
+void KisToolGradient::slotSetDitherSteps(int value)
+{
+    m_ditherSteps = value;
+    m_configGroup.writeEntry("ditherSteps", value);
 }
 
 void KisToolGradient::slotSetAntiAliasThreshold(qreal value)

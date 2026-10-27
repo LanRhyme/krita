@@ -61,6 +61,8 @@ private Q_SLOTS:
     void slotOpenFileClicked();
     void slotPaste();
 
+    void newsStateChanged(bool hasNews);
+
     void recentDocumentClicked(QModelIndex index);
     void slotRecentDocContextMenuRequest(const QPoint &pos);
 
@@ -68,6 +70,8 @@ private Q_SLOTS:
      * Once all files in the recent documents model are checked, cleanup the UI if the model is empty
      */
     void slotRecentFilesModelIsUpToDate();
+
+    void recentFilesResized();
 
     void slotScrollerStateChanged(QScroller::State state){ KisKineticScroller::updateCursor(this, state); }
 

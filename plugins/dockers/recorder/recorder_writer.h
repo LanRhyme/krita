@@ -7,6 +7,7 @@
 #ifndef RECORDER_WRITER_H
 #define RECORDER_WRITER_H
 
+#include "kis_types.h"
 #include "recorder_format.h"
 
 #include <QObject>
@@ -82,11 +83,13 @@ public:
     RecorderWriter& operator=(const RecorderWriter&) = delete;
     RecorderWriter& operator=(RecorderWriter&&) = delete;
 
+    bool isActive();
+
 Q_SIGNALS:
     void capturingDone(int writerId, bool success);
 
 public Q_SLOTS:
-    void onCaptureImage(int writerId, int index);
+    void onCaptureImage(int writerId, int index, KisPaintDeviceSP device);
 
 private:
     class Private;
@@ -124,7 +127,7 @@ Q_SIGNALS:
     void lowPerformanceWarning();
     void recorderStopWarning();
 
-    void startCapturing(int writerId, int index);
+    void startCapturing(int writerId, int index, KisPaintDeviceSP device);
 
 private Q_SLOTS:
     void onTimer();

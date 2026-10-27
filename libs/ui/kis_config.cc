@@ -37,7 +37,6 @@
 
 #include <config-ocio.h>
 
-#include <kis_color_manager.h>
 #include <KisOcioConfiguration.h>
 #include <KisUsageLogger.h>
 #include <kis_image_config.h>
@@ -597,6 +596,43 @@ void KisConfig::setColorSamplerPreviewCircleExtraCirclesEnabled(bool enabled)
     m_cfg.writeEntry("colorSamplerPreviewCircleExtraCirclesEnabled", enabled);
 }
 
+bool KisConfig::colorSamplerZoomPreviewEnabled(bool defaultValue) const {
+    bool def = false;
+    if (!defaultValue) {
+        return m_cfg.readEntry("colorSamplerZoomPreviewEnabled", def);
+    }
+    return def;
+}
+void KisConfig::setColorSamplerZoomPreviewEnabled(bool enabled) {
+    m_cfg.writeEntry("colorSamplerZoomPreviewEnabled", enabled);
+}
+
+qreal KisConfig::colorSamplerZoomPreviewScale(bool defaultValue) const {
+    qreal def = 10;
+    if (!defaultValue) {
+        return m_cfg.readEntry("colorSamplerZoomPreviewScale", def);
+    }
+    return def;
+}
+
+void KisConfig::setColorSamplerZoomPreviewScale(qreal scale) {
+    m_cfg.writeEntry("colorSamplerZoomPreviewScale", scale);
+}
+
+KisConfig::ColorSamplerPreviewCirclePosition KisConfig::colorSamplerPreviewCirclePosition(bool defaultValue) const {
+    if (!defaultValue) {
+        int pos = m_cfg.readEntry("colorSamplerPreviewCirclePosition", int(ColorSamplerPreviewCirclePosition::Center));
+        if (pos >= 0 && pos < int(ColorSamplerPreviewCirclePosition::Count)) {
+            return ColorSamplerPreviewCirclePosition(pos);
+        }
+    }
+    return ColorSamplerPreviewCirclePosition::Center;
+}
+
+void KisConfig::setColorSamplerPreviewCirclePosition(KisConfig::ColorSamplerPreviewCirclePosition position) {
+    m_cfg.writeEntry("colorSamplerPreviewCirclePosition", int(position));
+}
+
 bool KisConfig::useDirtyPresets(bool defaultValue) const
 {
    return (defaultValue ? false : m_cfg.readEntry("useDirtyPresets", true));
@@ -671,6 +707,16 @@ bool KisConfig::enableCanvasSurfaceColorSpaceManagement(bool defaultValue) const
 void KisConfig::setEnableCanvasSurfaceColorSpaceManagement(bool value)
 {
     m_cfg.writeEntry("enableCanvasSurfaceColorSpaceManagement", value);
+}
+
+bool KisConfig::effectiveShouldUseNativeSurfaceForCanvas(bool osManagedSurfacePresent) const
+{
+    bool useNativeSurfaceForCanvas = osManagedSurfacePresent && this->enableCanvasSurfaceColorSpaceManagement();
+    if (qEnvironmentVariableIsSet("KRITA_USE_NATIVE_CANVAS_SURFACE")) {
+        useNativeSurfaceForCanvas = qEnvironmentVariableIntValue("KRITA_USE_NATIVE_CANVAS_SURFACE");
+        qDebug() << "FPS-DEBUG: Krita canvas mode is overridden:" << (useNativeSurfaceForCanvas ? "native surface" : "legacy mode") << useNativeSurfaceForCanvas << qEnvironmentVariableIsSet("KRITA_USE_NATIVE_CANVAS_SURFACE");
+    }
+    return useNativeSurfaceForCanvas;
 }
 
 KisConfig::CanvasSurfaceMode KisConfig::canvasSurfaceColorSpaceManagementMode(bool defaultValue) const {
@@ -807,69 +853,21 @@ QString KisConfig::monitorProfile(int screen) const
     return profile;
 }
 
-QString KisConfig::monitorForScreen(int screen, const QString &defaultMonitor, bool defaultValue) const
+void KisConfig::setMonitorProfile(int screen, const QString & monitorProfile) const
 {
-    return (defaultValue ? defaultMonitor
-                         : m_cfg.readEntry(QString("monitor_for_screen_%1").arg(screen), defaultMonitor));
-}
-
-void KisConfig::setMonitorForScreen(int screen, const QString& monitor)
-{
-    m_cfg.writeEntry(QString("monitor_for_screen_%1").arg(screen), monitor);
-}
-
-void KisConfig::setMonitorProfile(int screen, const QString & monitorProfile, bool override) const
-{
-    m_cfg.writeEntry("monitorProfile/OverrideX11", override);
     m_cfg.writeEntry("monitorProfile" + QString(screen == 0 ? "": QString("_%1").arg(screen)), monitorProfile);
     if (!getScreenStringIdentfier(screen).isEmpty()) {
         m_cfg.writeEntry("monitorProfile" + getScreenStringIdentfier(screen), monitorProfile);
     }
 }
 
-// TODO: rename into getSystemScreenProfile
-const KoColorProfile *KisConfig::getScreenProfile(int screen)
-{
-    if (screen < 0) return 0;
-
-    KisConfig cfg(true);
-    QString monitorId;
-    if (KisColorManager::instance()->devices().size() > screen) {
-        monitorId = cfg.monitorForScreen(screen, KisColorManager::instance()->devices()[screen]);
-    }
-    //dbgKrita << "getScreenProfile(). Screen" << screen << "monitor id" << monitorId;
-
-    if (monitorId.isEmpty()) {
-        return 0;
-    }
-
-    QByteArray bytes = KisColorManager::instance()->displayProfile(monitorId);
-
-    //dbgKrita << "\tgetScreenProfile()" << bytes.size();
-    const KoColorProfile * profile = 0;
-    if (bytes.length() > 0) {
-        profile = KoColorSpaceRegistry::instance()->createColorProfile(RGBAColorModelID.id(), Integer8BitsColorDepthID.id(), bytes);
-        //dbgKrita << "\tKisConfig::getScreenProfile for screen" << screen << profile->name();
-    }
-    return profile;
-}
-
 const KoColorProfile *KisConfig::displayProfile(int screen) const
 {
     if (screen < 0) return 0;
 
-    // if the user plays with the settings, they can override the display profile, in which case
-    // we don't want the system setting.
-    bool override = useSystemMonitorProfile();
-    //dbgKrita << "KisConfig::displayProfile(). Override X11:" << override;
     const KoColorProfile *profile = 0;
-    if (override) {
-        //dbgKrita << "\tGoing to get the screen profile";
-        profile = KisConfig::getScreenProfile(screen);
-    }
 
-    // if it fails. check the configuration
-    if (!profile || !profile->isSuitableForDisplay()) {
+    {
         //dbgKrita << "\tGoing to get the monitor profile";
         QString monitorProfileName = monitorProfile(screen);
         //dbgKrita << "\t\tmonitorProfileName:" << monitorProfileName;
@@ -1050,10 +1048,10 @@ void KisConfig::setPasteFormat(qint32 format)
 
 qint32 KisConfig::monitorRenderIntent(bool defaultValue) const
 {
-    qint32 intent = m_cfg.readEntry("renderIntent", INTENT_PERCEPTUAL);
+    qint32 intent = m_cfg.readEntry("renderIntent", INTENT_RELATIVE_COLORIMETRIC);
     if (intent > 3) intent = 3;
     if (intent < 0) intent = 0;
-    return (defaultValue ? INTENT_PERCEPTUAL : intent);
+    return (defaultValue ? INTENT_RELATIVE_COLORIMETRIC : intent);
 }
 
 void KisConfig::setRenderIntent(qint32 renderIntent) const
@@ -1477,6 +1475,16 @@ KisConfig::SessionOnStartup KisConfig::sessionOnStartup(bool defaultValue) const
 void KisConfig::setSessionOnStartup(SessionOnStartup value)
 {
     m_cfg.writeEntry("sessionOnStartup", (int)value);
+}
+
+KisConfig::IconsInMenu KisConfig::iconsInMenu(bool defaultValue) const
+{
+    int value = defaultValue ? IIM_Default : m_cfg.readEntry("iconsInMenu", (int)IIM_Default);
+    return (KisConfig::IconsInMenu)value;
+}
+void KisConfig::setIconsInMenu(IconsInMenu value)
+{
+    m_cfg.writeEntry("iconsInMenu", (int)value);
 }
 
 bool KisConfig::saveSessionOnQuit(bool defaultValue) const
@@ -2143,16 +2151,6 @@ void KisConfig::setCurrentInputProfile(const QString& name)
     m_cfg.writeEntry("currentInputProfile", name);
 }
 
-bool KisConfig::useSystemMonitorProfile(bool defaultValue) const
-{
-    return (defaultValue ? false : m_cfg.readEntry("ColorManagement/UseSystemMonitorProfile", false));
-}
-
-void KisConfig::setUseSystemMonitorProfile(bool _useSystemMonitorProfile) const
-{
-    m_cfg.writeEntry("ColorManagement/UseSystemMonitorProfile", _useSystemMonitorProfile);
-}
-
 bool KisConfig::presetStripVisible(bool defaultValue) const
 {
     return (defaultValue ? true : m_cfg.readEntry("presetStripVisible", true));
@@ -2193,44 +2191,44 @@ void KisConfig::setHidePopups(bool hidePopups)
     m_cfg.writeEntry("hidePopups", hidePopups);
 }
 
-int KisConfig::numDefaultLayers(bool defaultValue) const
+int KisConfig::numDefaultLayers(const QLatin1String &dialogType, bool defaultValue) const
 {
-    return (defaultValue ? 2 : m_cfg.readEntry("NumberOfLayersForNewImage", 2));
+    return (defaultValue ? 2 : m_cfg.readEntry(dialogType + "NumberOfLayersForNewImage", 2));
 }
 
-void KisConfig::setNumDefaultLayers(int num)
+void KisConfig::setNumDefaultLayers(const QLatin1String &dialogType, int num)
 {
-    m_cfg.writeEntry("NumberOfLayersForNewImage", num);
+    m_cfg.writeEntry(dialogType + "NumberOfLayersForNewImage", num);
 }
 
-quint8 KisConfig::defaultBackgroundOpacity(bool defaultValue) const
+quint8 KisConfig::defaultBackgroundOpacity(const QLatin1String &dialogType, bool defaultValue) const
 {
-  return (defaultValue ? (int)OPACITY_OPAQUE_U8 : m_cfg.readEntry("BackgroundOpacityForNewImage", (int)OPACITY_OPAQUE_U8));
+  return (defaultValue ? (int)OPACITY_OPAQUE_U8 : m_cfg.readEntry(dialogType + "BackgroundOpacityForNewImage", (int)OPACITY_OPAQUE_U8));
 }
 
-void KisConfig::setDefaultBackgroundOpacity(quint8 value)
+void KisConfig::setDefaultBackgroundOpacity(const QLatin1String &dialogType, quint8 value)
 {
-  m_cfg.writeEntry("BackgroundOpacityForNewImage", (int)value);
+  m_cfg.writeEntry(dialogType + "BackgroundOpacityForNewImage", (int)value);
 }
 
-QColor KisConfig::defaultBackgroundColor(bool defaultValue) const
+QColor KisConfig::defaultBackgroundColor(const QLatin1String &dialogType, bool defaultValue) const
 {
-  return (defaultValue ? QColor(Qt::white) : m_cfg.readEntry("BackgroundColorForNewImage", QColor(Qt::white)));
+  return (defaultValue ? QColor(Qt::white) : m_cfg.readEntry(dialogType + "BackgroundColorForNewImage", QColor(Qt::white)));
 }
 
-void KisConfig::setDefaultBackgroundColor(const QColor &value)
+void KisConfig::setDefaultBackgroundColor(const QLatin1String &dialogType, const QColor &value)
 {
-  m_cfg.writeEntry("BackgroundColorForNewImage", value);
+  m_cfg.writeEntry(dialogType + "BackgroundColorForNewImage", value);
 }
 
-KisConfig::BackgroundStyle KisConfig::defaultBackgroundStyle(bool defaultValue) const
+KisConfig::BackgroundStyle KisConfig::defaultBackgroundStyle(const QLatin1String &dialogType, bool defaultValue) const
 {
-  return (KisConfig::BackgroundStyle)(defaultValue ? RASTER_LAYER : m_cfg.readEntry("BackgroundStyleForNewImage", (int)RASTER_LAYER));
+  return (KisConfig::BackgroundStyle)(defaultValue ? RASTER_LAYER : m_cfg.readEntry(dialogType + "BackgroundStyleForNewImage", (int)RASTER_LAYER));
 }
 
-void KisConfig::setDefaultBackgroundStyle(KisConfig::BackgroundStyle value)
+void KisConfig::setDefaultBackgroundStyle(const QLatin1String &dialogType, KisConfig::BackgroundStyle value)
 {
-  m_cfg.writeEntry("BackgroundStyleForNewImage", (int)value);
+  m_cfg.writeEntry(dialogType + "BackgroundStyleForNewImage", (int)value);
 }
 
 int KisConfig::lineSmoothingType(bool defaultValue) const

@@ -14,6 +14,7 @@
 #include "libkis.h"
 
 #include "PaintingResources.h"
+#include "StrokePoint.h"
 
 /**
  * Node represents a layer or mask in a Krita image's Node hierarchy. Group layers can contain
@@ -590,6 +591,21 @@ public Q_SLOTS:
                    double pressureOne = 1.0,
                    double pressureTwo = 1.0,
                    const QString strokeStyle = PaintingResources::defaultStrokeStyle);
+
+    /**
+     * @brief paintPolylineStroke paint one continuous brush stroke with complete input
+     * information for every supplied point. Uses the current brush preset.
+     *
+     * The stroke is submitted as one undoable freehand stroke, so brush
+     * spacing, randomness, and distance-based sensors are continuous across
+     * all segments. A single point paints one dab.
+     *
+     * @param points input samples in image coordinates. Time is elapsed
+     * milliseconds from the beginning of the stroke; speed is normalized.
+     * @param strokeStyle appearance of the outline; see paintLine().
+     */
+    void paintPolylineStroke(const QList<StrokePoint> &points,
+                     const QString strokeStyle = PaintingResources::defaultStrokeStyle);
 
     /**
      * @brief paint a rectangle on the canvas. Uses current brush preset

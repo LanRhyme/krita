@@ -20,6 +20,8 @@ private Q_SLOTS:
     void benchmarkCreation();
     void testBlockLevelOfDetail();
     void testConvertImageColorSpace();
+    void testChannelFlagsAfterColorSpaceConversion_data();
+    void testChannelFlagsAfterColorSpaceConversion();
     void testAssignImageProfile();
     void testGlobalSelection();
     void testCloneImage();
@@ -47,6 +49,11 @@ private Q_SLOTS:
     void testMergePassThroughOverPaintLayer();
 
     void testPaintOverlayMask();
+
+    void testHdrReferenceWhite_data();
+    void testHdrReferenceWhite();
+
+    void testHdrReferenceWhiteCloning();
 };
 
 #endif

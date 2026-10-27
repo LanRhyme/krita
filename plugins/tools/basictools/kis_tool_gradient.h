@@ -21,6 +21,7 @@
 #include <kis_global.h>
 #include <kis_types.h>
 #include <kis_gradient_painter.h>
+#include <kis_int_parse_spin_box.h>
 #include <flake/kis_node_shape.h>
 #include <kis_icon.h>
 #include <kconfig.h>
@@ -57,7 +58,8 @@ private Q_SLOTS:
     void slotSetShape(int);
     void slotSetRepeat(int);
     void slotSetReverse(bool);
-    void slotSetDither(bool);
+    void slotSetDither(int);
+    void slotSetDitherSteps(int);
     void slotSetAntiAliasThreshold(qreal);
 protected Q_SLOTS:
     void resetCursorStyle() override;
@@ -82,13 +84,17 @@ private:
     KisGradientPainter::enumGradientShape m_shape;
     KisGradientPainter::enumGradientRepeat m_repeat;
 
-    bool m_dither {false};
+    KisGradientPainter::enumDither m_dither {KisGradientPainter::DitherNone};
+    int m_ditherSteps {KisGradientPainter::defaultDitherSteps};
     bool m_reverse {false};
     double m_antiAliasThreshold {0.0};
 
     QLabel *m_lbShape {nullptr};
     QLabel *m_lbRepeat {nullptr};
-    QCheckBox *m_ckDither {nullptr};
+    QLabel *m_lbDither {nullptr};
+    KComboBox *m_cmbDither {nullptr};
+    QLabel *m_lbDitherSteps {nullptr};
+    KisIntParseSpinBox *m_sbDitherSteps {nullptr};
     QCheckBox *m_ckReverse {nullptr};
     KComboBox *m_cmbShape {nullptr};
     KComboBox *m_cmbRepeat {nullptr};

@@ -44,6 +44,19 @@ QString PythonPlugin::moduleFilePathPart() const
     return filePath.replace(".", "/");
 }
 
+QString PythonPlugin::manual()
+{
+    if (m_manual.isNull() && !m_manualPath.isEmpty()) {
+        QFile f(m_manualPath);
+        if (f.open(QFile::ReadOnly)) {
+            QByteArray ba = f.readAll();
+            f.close();
+            m_manual = QString::fromUtf8(ba);
+        }
+    }
+    return m_manual;
+}
+
 bool PythonPlugin::isValid() const
 {
     dbgScript << "Got Krita/PythonPlugin: " << name()
@@ -60,6 +73,19 @@ bool PythonPlugin::isValid() const
     }
 
     return true;
+}
+
+QString PythonPlugin::statusText()
+{
+    if (isBroken()) {
+        return i18nc("@item:intable plugin status", "Broken");
+    } else if (isUnstable()) {
+        return i18nc("@item:intable plugin status", "Unstable");
+    } else if (isEnabled()) {
+        return i18nc("@item:intable plugin status", "Loaded");
+    } else {
+        return i18nc("@item:intable plugin status", "Not loaded");
+    }
 }
 
 // PythonPluginManager implementation
@@ -274,15 +300,11 @@ void PythonPluginManager::scanPlugins()
             plugin.m_comment = df.readComment();
             plugin.m_name = df.readName();
             plugin.m_moduleName = dg.readEntry("X-KDE-Library");
+            plugin.m_desktopFilePath = QFileInfo(desktopFile).filePath();
 
             QString manual = dg.readEntry("X-Krita-Manual");
             if (!manual.isEmpty()) {
-                QFile f(QFileInfo(desktopFile).path() + "/" + plugin.m_moduleName + "/" + manual);
-                if (f.open(QFile::ReadOnly)) {
-                    QByteArray ba = f.readAll();
-                    f.close();
-                    plugin.m_manual = QString::fromUtf8(ba);
-                }
+                plugin.m_manualPath = QFileInfo(desktopFile).path() + "/" + plugin.m_moduleName + "/" + manual;
             }
             if (!plugin.isValid()) {
                 dbgScript << plugin.name() << "is not usable";
@@ -322,7 +344,11 @@ void PythonPluginManager::tryLoadEnabledPlugins()
 
 void PythonPluginManager::loadModule(PythonPlugin &plugin)
 {
-    KIS_SAFE_ASSERT_RECOVER_RETURN(plugin.isEnabled() && !plugin.isBroken());
+    KIS_SAFE_ASSERT_RECOVER_RETURN(plugin.isEnabled());
+
+    // We can't know if a plugin is still broken until we try to load it
+    plugin.m_broken = false;
+    plugin.m_errorReason.clear();
 
     QString module_name = plugin.moduleName();
     KisUsageLogger::writeSysInfo("\t" + module_name);
@@ -357,7 +383,7 @@ void PythonPluginManager::loadModule(PythonPlugin &plugin)
     } else {
         plugin.m_errorReason = i18nc(
                                    "@info:tooltip"
-                                   , "Module not loaded:<br/>%1"
+                                   , "Module not loaded:<br/><code>%1</code>"
                                    , py.lastTraceback().replace("\n", "<br/>")
                                );
     }
@@ -398,7 +424,7 @@ void PythonPluginManager::setPluginEnabled(PythonPlugin &plugin, bool enabled)
 {
     bool wasEnabled = plugin.isEnabled();
 
-    if (wasEnabled && !enabled) {
+    if (wasEnabled && !enabled && plugin.m_loaded) {
         unloadModule(plugin);
     }
 

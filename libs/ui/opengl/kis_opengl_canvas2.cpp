@@ -22,6 +22,7 @@
 #include <KisViewManager.h>
 #include "KisRepaintDebugger.h"
 
+#include "KisLongPressEventFilter.h"
 #include "KisOpenGLModeProber.h"
 #include "KisOpenGLContextSwitchLock.h"
 #include <KisPlatformPluginInterfaceFactory.h>
@@ -90,6 +91,7 @@ KisOpenGLCanvas2::KisOpenGLCanvas2(KisCanvas2 *canvas,
     , d(new Private())
 {
     setProperty("krita_skip_srgb_surface_manager_assignment", true);
+    setProperty(KisLongPressEventFilter::ENABLED_PROPERTY, false);
 
     KisConfig cfg(false);
     cfg.setCanvasState("OPENGL_STARTED");
@@ -114,12 +116,7 @@ KisOpenGLCanvas2::KisOpenGLCanvas2(KisCanvas2 *canvas,
     setAttribute(Qt::WA_DontCreateNativeAncestors, true);
 
     const bool osManagedSurfacePresent = KisPlatformPluginInterfaceFactory::instance()->surfaceColorManagedByOS();
-    bool useNativeSurfaceForCanvas = osManagedSurfacePresent && cfg.enableCanvasSurfaceColorSpaceManagement();
-    if (qEnvironmentVariableIsSet("KRITA_USE_NATIVE_CANVAS_SURFACE")) {
-        useNativeSurfaceForCanvas = qEnvironmentVariableIntValue("KRITA_USE_NATIVE_CANVAS_SURFACE");
-        qDebug() << "FPS-DEBUG: Krita canvas mode is overridden:" << (useNativeSurfaceForCanvas ? "native surface" : "legacy mode") << useNativeSurfaceForCanvas << qEnvironmentVariableIsSet("KRITA_USE_NATIVE_CANVAS_SURFACE");
-    }
-
+    const bool useNativeSurfaceForCanvas = cfg.effectiveShouldUseNativeSurfaceForCanvas(osManagedSurfacePresent);
     if (useNativeSurfaceForCanvas) {
         setAttribute(Qt::WA_NativeWindow, true);
     }

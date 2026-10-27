@@ -18,6 +18,8 @@ public:
         Scale,
         Rotate,
         Undo,
+        RestoreShape,
+        RestoreShapeWithStretch,
         RunOnQImage,
         RunOnDev,
         BenchmarkCopyConstructor,
@@ -42,6 +44,10 @@ private Q_SLOTS:
 
     void testPointsUndoBuildUp();
     void testPointsUndoWash();
+    void testPointsRestoreShapeBuildUp();
+    void testPointsRestoreShapeWash();
+    void testPointsRestoreShapeWithStretchBuildUp();
+    void testPointsRestoreShapeWithStretchWash();
 
     void testRunOnDev();
     void testRunOnQImage();

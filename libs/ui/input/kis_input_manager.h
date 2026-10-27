@@ -17,6 +17,8 @@
 class QPointF;
 class QTouchEvent;
 class KisCanvas2;
+class KisToolInvocationAction;
+class KoToolManager;
 /**
  * \brief Central object to manage canvas input.
  *
@@ -42,7 +44,7 @@ public:
     /**
      * Constructor.
      */
-    KisInputManager(QObject *parent);
+    KisInputManager(QObject *parent, KoToolManager *toolManager);
 
     /**
      * Destructor.
@@ -94,6 +96,11 @@ public:
      */
     QPointer<KisToolProxy> toolProxy() const;
 
+    /**
+     * The built-in action that forwards primary strokes to the active tool.
+     */
+    KisToolInvocationAction *defaultInputAction() const;
+
 private Q_SLOTS:
     void slotAboutToChangeTool();
     void slotToolChanged();
@@ -102,17 +109,8 @@ private Q_SLOTS:
     void slotCompressedMoveEvent();
     void deregisterPopupWidget();
     void slotConfigChanged();
-    void slotTouchHoldTriggered();
 
 private:
-    bool startTouch(bool &retval);
-    void endTouch();
-    bool touchHoldBufferUpdate(QTouchEvent *touchEvent);
-
-    // Handlers for events that may have been buffered for a touch hold.
-    bool handleTouchBegin(QTouchEvent *touchEvent);
-    bool handleTouchUpdate(QTouchEvent *touchEvent);
-
     bool eventFilterImpl(QEvent * event);
     template <class Event>
         bool compressMoveEventCommon(Event *event);

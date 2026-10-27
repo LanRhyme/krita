@@ -5,6 +5,7 @@
  */
 
 #include "recorder_writer.h"
+#include "recorder_image_copying_job.h"
 #include "recorder_const.h"
 #include "recorder_export_settings.h"
 
@@ -34,22 +35,11 @@ namespace
         "KisToolTransform",
         "KisToolPolyline",
         "KisToolPolygon",
-        "KisToolSelectOutline",
-        "KisToolSelectPolygonal",
-        "KisToolEncloseAndFill",
-        "KisToolPath",
-        "KisToolCrop",
-        "KisToolSelectPath",
-        "KisToolSelectMagnetic",
-        "SvgTextTool",
     }; // disable recorder when toggled to one of these tools.
     const QStringList activateBlacklistedTools = {
-        "KritaTransform/KisToolMove",
         "KritaShape/KisToolLine",
         "KritaShape/KisToolRectangle",
         "KritaShape/KisToolEllipse",
-        "KisToolSelectRectangular",
-        "KisToolSelectElliptical",
     }; // disable recorder when toggled to one of these tools and activated tool(left button pressed on canvas).
 }
 
@@ -145,6 +135,7 @@ public:
     QImage frame;
     int frameResolution = -1;
     int partIndex = 0;                                     // Consecutive file number
+    bool isActive = false;
     const RecorderWriterSettings* settings;
     const QDir* outputDir;
 
@@ -153,17 +144,9 @@ public:
                                                      Integer8BitsColorDepthID.id(),
                                                      KoColorSpaceRegistry::instance()->p709SRGBProfile());
 
-    void captureImage()
+    void captureImage(KisPaintDeviceSP device)
     {
         KisImageSP image = canvas->image();
-
-        // Create detached paint device that can be converted to target colorspace
-        KisPaintDeviceSP device = new KisPaintDevice(image->colorSpace());
-
-        // we don't want image->barrierLock() because it will wait until the full stroke is finished
-        image->immediateLockForReadOnly();
-        device->makeCloneFromRough(image->projection(), image->bounds());
-        image->unlock();
 
         const bool needSrgbConversion = [&]() {
             if (image->colorSpace()->colorDepthId() != Integer8BitsColorDepthID
@@ -274,12 +257,12 @@ public:
         }
     }
 
-    bool writeFrame()
+    int writeFrame(int index)
     {
         if (!outputDir->exists() && !outputDir->mkpath(settings->outputDirectory))
             return false;
 
-        const QString fileName = QString("%1").arg(partIndex, 7, 10, QLatin1Char('0'));
+        const QString fileName = QString("%1").arg(index, 7, 10, QLatin1Char('0'));
         const QString &filePath = QString("%1%2.%3").arg(settings->outputDirectory, fileName,
                                                          RecorderFormatInfo::fileExtension(settings->format));
 
@@ -315,12 +298,14 @@ RecorderWriter::~RecorderWriter()
     delete d;
 }
 
-void  RecorderWriter::onCaptureImage(int writerId, int index)
+void RecorderWriter::onCaptureImage(int writerId, int index, KisPaintDeviceSP device)
 {
     if (static_cast<int>(id) != writerId)
         return;
 
-    d->captureImage();
+    d->isActive = true;
+
+    d->captureImage(device);
 
     // downscale image buffer
     for (int res = 0; res < d->settings->resolution; ++res)
@@ -328,13 +313,16 @@ void  RecorderWriter::onCaptureImage(int writerId, int index)
 
     d->removeFrameTransparency();
 
-    d->partIndex = index;
+    bool isFrameWritten = d->writeFrame(index);
 
-    bool isFrameWritten = d->writeFrame();
-
+    d->isActive = false;
     Q_EMIT capturingDone(id, isFrameWritten);
 }
 
+bool RecorderWriter::isActive()
+{
+    return d->isActive;
+}
 
 struct WriterPoolEl
 {
@@ -414,11 +402,26 @@ public:
         bool result = true;
         bool alreadyWarn = false;
         bool alreadyErr = false;
-        for(auto& el: writerPool)
-        {
+
+        for (auto &el : writerPool) {
+            if (el.inUse && !el.writer->isActive()) {
+                // There's a pending job, but the writer didn't recieve the signal yet
+
+                // Wait until all the jobs processes
+                canvas->image()->waitForDone();
+
+                // Make sure the signals are delivered
+                QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+
+                //we can exit the loop, all the signals have been delivered and we don't need to check further
+                break;
+            }
+        }
+
+        for (auto &el : writerPool) {
             el.thread->quit();
             el.thread->wait(RecorderConst::waitThreadTimeoutMs);
-            disconnect(q, SIGNAL(startCapturing(int, int)), el.writer.get(), SLOT(onCaptureImage(int, int)));
+            disconnect(q, SIGNAL(startCapturing(int, int, KisPaintDeviceSP)), el.writer.get(), SLOT(onCaptureImage(int, int, KisPaintDeviceSP)));
             disconnect(el.writer.get(), SIGNAL(capturingDone(int, bool)), q, SLOT(onCapturingDone(int, bool)));
             if (el.thread->isRunning())
             {
@@ -462,7 +465,7 @@ public:
             auto writerPtr = writerPool[newWorkerId].writer;
             auto threadPtr = writerPool[newWorkerId].thread;
             threadPtr->setObjectName(QString("Krita-Recorder-WriterPool#%1").arg(newWorkerId));
-            connect(q, SIGNAL(startCapturing(int, int)), writerPtr.get(), SLOT(onCaptureImage(int, int)));
+            connect(q, SIGNAL(startCapturing(int, int, KisPaintDeviceSP)), writerPtr.get(), SLOT(onCaptureImage(int, int, KisPaintDeviceSP)));
             connect(writerPtr.get(), SIGNAL(capturingDone(int, bool)), q, SLOT(onCapturingDone(int, bool)));
             writerPtr->moveToThread(threadPtr.get());
             threadPtr->start(QThread::IdlePriority);
@@ -583,6 +586,7 @@ void RecorderWriterManager::start(bool toggleEnabled)
 
 bool RecorderWriterManager::stop(bool toggleEnabled)
 {
+    //Check if the timer is active, so that we don't try to clear the writer pool multiple times
     if (!d->timer.isActive())
         return true;
 
@@ -634,7 +638,18 @@ void RecorderWriterManager::onTimer()
     d->writerPool[d->freeWriterId].inUse = true;
     d->writerPool[d->freeWriterId].thread->setPriority(QThread::HighPriority);
     recorderThreads.incUsedAndNotify();
-    Q_EMIT startCapturing(d->freeWriterId, ++d->partIndex);
+
+    RecorderImageCopyingJob *job = new RecorderImageCopyingJob(d->canvas->image()->projection(),
+                                                               d->canvas->image()->bounds(),
+                                                               d->freeWriterId,
+                                                               ++d->partIndex);
+
+    connect(job,
+            SIGNAL(sigImageCopyingDoneWithData(int, int, KisPaintDeviceSP)),
+            this,
+            SIGNAL(startCapturing(int, int, KisPaintDeviceSP)));
+
+    d->canvas->image()->addSpontaneousJob(job);
 }
 
 void RecorderWriterManager::onCapturingDone(int workerId, bool success)
@@ -652,7 +667,7 @@ void RecorderWriterManager::onCapturingDone(int workerId, bool success)
 
 void RecorderWriterManager::onImageModified()
 {
-    if (!d->enabled || !d->canStartCapture() )
+    if (!d->enabled || !d->canStartCapture())
         return;
 
     if ((!d->settings.recordIsolateLayerMode) &&

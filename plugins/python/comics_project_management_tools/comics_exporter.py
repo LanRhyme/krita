@@ -286,12 +286,12 @@ class comicsExporter():
                     # Crop. Cropping per guide only happens if said guides have been found.
                     if w["Crop"] is True:
                         listHGuides = []
-                        listHGuides = page.horizontalGuides()
+                        listHGuides = page.guidesConfig().horizontalGuides()
                         listHGuides.sort()
                         for i in range(len(listHGuides) - 1, 0, -1):
                             if listHGuides[i] < 0 or listHGuides[i] > page.height():
                                 listHGuides.pop(i)
-                        listVGuides = page.verticalGuides()
+                        listVGuides = page.guidesConfig().verticalGuides()
                         listVGuides.sort()
                         for i in range(len(listVGuides) - 1, 0, -1):
                             if listVGuides[i] < 0 or listVGuides[i] > page.width():
@@ -418,11 +418,19 @@ class comicsExporter():
     """
 
     def handleShapeDescription(self, shape, list, textOnly=False):
+        if (shape.type() != "KoSvgTextShapeID" and textOnly is True):
+            return
+        shapeDesc = {}
+        shapeDesc["name"] = shape.name()
+        rect = shape.boundingBox()
+        listOfPoints = [rect.topLeft(), rect.topRight(), rect.bottomRight(), rect.bottomLeft()]
+        shapeDesc["boundingBox"] = listOfPoints
+        if (shape.type() == "KoSvgTextShapeID" and textOnly is True):
+            shapeDesc["text"] = shape.toSvg()
+        list.append(shapeDesc)
         return
         # Turn off shape retrieval for now until the new text tool is finished.
         r"""
-        if (shape.type() != "KoSvgTextShapeID" and textOnly is True):
-            return
         shapeDesc = {}
         shapeDesc["name"] = shape.name()
         rect = shape.boundingBox()
@@ -599,12 +607,16 @@ class comicsExporter():
     """
 
     def removeLayers(self, labels, node):
+        deleteList = []
         if node.colorLabel() in labels:
             node.remove()
+            deleteList.append(node)
         else:
             if node.childNodes():
                 for child in node.childNodes():
                     self.removeLayers(labels, node=child)
+        for node in deleteList:
+            del node
 
     """
     package cbz puts all the meta-data and relevant files into an zip file ending with ".cbz"

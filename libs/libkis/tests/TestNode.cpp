@@ -9,6 +9,7 @@
 
 #include <KritaVersionWrapper.h>
 #include <Node.h>
+#include <StrokePoint.h>
 #include <Krita.h>
 
 #include <KoColorSpaceRegistry.h>
@@ -254,6 +255,37 @@ void TestNode::testFindChildNodes()
 
 }
 
+void TestNode::testStrokePoint()
+{
+    StrokePoint point(QPointF(12.5, 9.25), 0.25, -20.0, 15.0, 45.0, 0.75, 123.0, 0.5);
+
+    QCOMPARE(point.position(), QPointF(12.5, 9.25));
+    QCOMPARE(point.pressure(), 0.25);
+    QCOMPARE(point.xTilt(), -20.0);
+    QCOMPARE(point.yTilt(), 15.0);
+    QCOMPARE(point.rotation(), 45.0);
+    QCOMPARE(point.tangentialPressure(), 0.75);
+    QCOMPARE(point.time(), 123.0);
+    QCOMPARE(point.speed(), 0.5);
+
+    point.setPosition(QPointF(1.0, 2.0));
+    point.setPressure(0.8);
+    point.setXTilt(3.0);
+    point.setYTilt(4.0);
+    point.setRotation(5.0);
+    point.setTangentialPressure(0.6);
+    point.setTime(7.0);
+    point.setSpeed(0.9);
+
+    QCOMPARE(point.position(), QPointF(1.0, 2.0));
+    QCOMPARE(point.pressure(), 0.8);
+    QCOMPARE(point.xTilt(), 3.0);
+    QCOMPARE(point.yTilt(), 4.0);
+    QCOMPARE(point.rotation(), 5.0);
+    QCOMPARE(point.tangentialPressure(), 0.6);
+    QCOMPARE(point.time(), 7.0);
+    QCOMPARE(point.speed(), 0.9);
+}
+
 
 KISTEST_MAIN(TestNode)
-

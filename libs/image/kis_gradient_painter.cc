@@ -30,6 +30,7 @@
 #include "kis_cached_gradient_shape_strategy.h"
 #include "krita_utils.h"
 #include "KoMixColorsOp.h"
+#include <KisDitherMaths.h>
 #include <KisDitherOp.h>
 #include <KoCachedGradient.h>
 
@@ -361,7 +362,7 @@ public:
    double valueAt(double x, double y) const override;
 
 protected:
-   double m_vectorAngle;
+    double m_vectorAngle;
     double m_radius;
 };
 
@@ -403,6 +404,58 @@ double ReverseSpiralGradientStrategy::valueAt(double x, double y) const
     return t;
 
 };
+
+class DitheredGradientStrategy : public KisGradientShapeStrategy
+{
+
+public:
+    DitheredGradientStrategy(KisGradientPainter::enumDither dither, int ditherSteps, QSharedPointer<KisGradientShapeStrategy> shapeStrategy);
+
+    double valueAt(double x, double y) const override;
+
+protected:
+    KisGradientPainter::enumDither m_dither;
+    int m_ditherSteps;
+    QSharedPointer<KisGradientShapeStrategy> m_shapeStrategy;
+};
+
+DitheredGradientStrategy::DitheredGradientStrategy(KisGradientPainter::enumDither dither,
+                                                   int ditherSteps,
+                                                   QSharedPointer<KisGradientShapeStrategy> shapeStrategy)
+        : m_dither(dither)
+        , m_ditherSteps(ditherSteps)
+        , m_shapeStrategy(shapeStrategy)
+{
+}
+
+double DitheredGradientStrategy::valueAt(double x, double y) const
+{
+    double value = m_shapeStrategy->valueAt(x, y);
+    double ditherFactor = 0.0;
+
+    switch (m_dither) {
+    case KisGradientPainter::DitherBayer2:
+        ditherFactor = KisDitherMaths::dither_factor_bayer_2_normalized(x, y);
+        break;
+    case KisGradientPainter::DitherBayer4:
+        ditherFactor = KisDitherMaths::dither_factor_bayer_4_normalized(x, y);
+        break;
+    case KisGradientPainter::DitherBayer8:
+        ditherFactor = KisDitherMaths::dither_factor_bayer_8_normalized(x, y);
+        break;
+    default:
+        return value;
+    }
+
+    // Divide gradient into discrete steps and adjust value with dithering matrix.
+    value *= m_ditherSteps - 1;
+    value = std::floor(value + ditherFactor);
+
+    // Bring value to original scale.
+    value /= m_ditherSteps - 1;
+
+    return value;
+}
 
 class GradientRepeatStrategy
 {
@@ -1095,7 +1148,8 @@ bool KisGradientPainter::paintGradient(const QPointF& gradientVectorStart,
                                        qint32 starty,
                                        qint32 width,
                                        qint32 height,
-                                       bool useDithering)
+                                       enumDither dither,
+                                       int ditherSteps)
 {
     return paintGradient(gradientVectorStart,
                          gradientVectorEnd,
@@ -1103,7 +1157,8 @@ bool KisGradientPainter::paintGradient(const QPointF& gradientVectorStart,
                          antiAliasThreshold,
                          reverseGradient,
                          QRect(startx, starty, width, height),
-                         useDithering);
+                         dither,
+                         ditherSteps);
 }
 
 bool KisGradientPainter::paintGradient(const QPointF& gradientVectorStart,
@@ -1112,7 +1167,8 @@ bool KisGradientPainter::paintGradient(const QPointF& gradientVectorStart,
                                        double antiAliasThreshold,
                                        bool reverseGradient,
                                        const QRect &applyRect,
-                                       bool useDithering)
+                                       enumDither dither,
+                                       int ditherSteps)
 {
     // The following combinations of options have aliasing artifacts
     // where the first color meets the last color of the gradient.
@@ -1130,7 +1186,8 @@ bool KisGradientPainter::paintGradient(const QPointF& gradientVectorStart,
                                  repeat,
                                  antiAliasThreshold,
                                  reverseGradient,
-                                 useDithering,
+                                 dither,
+                                 ditherSteps,
                                  applyRect,
                                  paintPolicy);
 
@@ -1141,7 +1198,8 @@ bool KisGradientPainter::paintGradient(const QPointF& gradientVectorStart,
                                  repeat,
                                  antiAliasThreshold,
                                  reverseGradient,
-                                 useDithering,
+                                 dither,
+                                 ditherSteps,
                                  applyRect,
                                  paintPolicy);
 
@@ -1153,7 +1211,8 @@ bool KisGradientPainter::paintGradient(const QPointF& gradientVectorStart,
                                  repeat,
                                  antiAliasThreshold,
                                  reverseGradient,
-                                 useDithering,
+                                 dither,
+                                 ditherSteps,
                                  applyRect,
                                  paintPolicy);
         }
@@ -1166,7 +1225,8 @@ bool KisGradientPainter::paintGradient(const QPointF& gradientVectorStart,
                          repeat,
                          antiAliasThreshold,
                          reverseGradient,
-                         useDithering,
+                         dither,
+                         ditherSteps,
                          applyRect,
                          paintPolicy);
 }
@@ -1177,7 +1237,8 @@ bool KisGradientPainter::paintGradient(const QPointF& gradientVectorStart,
                                        enumGradientRepeat repeat,
                                        double antiAliasThreshold,
                                        bool reverseGradient,
-                                       bool useDithering,
+                                       enumDither dither,
+                                       int ditherSteps,
                                        const QRect &applyRect,
                                        T & paintPolicy)
 {
@@ -1255,6 +1316,13 @@ bool KisGradientPainter::paintGradient(const QPointF& gradientVectorStart,
         break;
     }
 
+    if (isBayerDither(dither)) {
+        // Wrap each shape strategy in a dithering filter.
+        for (Private::ProcessRegion& region : m_d->processRegions) {
+            region.precalculatedShapeStrategy = toQShared(new DitheredGradientStrategy(dither, ditherSteps, region.precalculatedShapeStrategy));
+        }
+    }
+
     GradientRepeatStrategy *repeatStrategy = 0;
 
     switch (repeat) {
@@ -1290,7 +1358,7 @@ bool KisGradientPainter::paintGradient(const QPointF& gradientVectorStart,
     tmp->setDefaultBounds(dev->defaultBounds());
     tmp->clear();
 
-    const KisDitherOp* op = mixCs->ditherOp(destCs->colorDepthId().id(), useDithering ? DITHER_BEST : DITHER_NONE);
+    const KisDitherOp* op = mixCs->ditherOp(destCs->colorDepthId().id(), dither == DitherBlueNoise ? DITHER_BEST : DITHER_NONE);
 
     Q_FOREACH (const Private::ProcessRegion &r, m_d->processRegions) {
         QRect processRect = r.processRect;
@@ -1341,4 +1409,11 @@ bool KisGradientPainter::paintGradient(const QPointF& gradientVectorStart,
     bitBlt(requestedRect.topLeft(), dev, requestedRect);
 
     return true;
+}
+
+bool KisGradientPainter::isBayerDither(enumDither dither)
+{
+    return dither == KisGradientPainter::DitherBayer2 ||
+           dither == KisGradientPainter::DitherBayer4 ||
+           dither == KisGradientPainter::DitherBayer8;
 }

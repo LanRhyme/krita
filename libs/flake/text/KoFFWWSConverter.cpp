@@ -146,7 +146,7 @@ struct FontFamilyNode {
     static FontFamilyNode createWWSFamilyNode(const FontFamilyNode &child, const FontFamilyNode &typographic, QStringList existingWWSNames) {
         FontFamilyNode wwsFamily;
         if (child.type != KoSvgText::OpenTypeFontType) {
-            if (child.fontStyle.toLower() == "regular") {
+            if (child.fontStyle.compare("regular", Qt::CaseInsensitive) == 0) {
                 wwsFamily.fontFamily = child.fontFamily;
             } else {
                 wwsFamily.fontFamily = child.fontFamily + " " + child.fontStyle;
@@ -763,7 +763,7 @@ void KoFFWWSConverter::sortIntoWWSFamilies()
                         // Like, it is technically correct, because it allows us to select fonts with CSS
                         // that would otherwise be unselectable, but this does mean that other applications
                         // would need to have our exact idea of a CSS family name.
-                        if (wws->fontStyle.toLower() != "regular"
+                        if (wws->fontStyle.compare("regular", Qt::CaseInsensitive) != 0
                                 && !font->fontStyle.contains(wws->fontStyle)) {
                             continue;
                         }
@@ -1017,6 +1017,7 @@ QList<KoFontFamilyWWSRepresentation> KoFFWWSConverter::collectFamilies() const
     QList<KoFontFamilyWWSRepresentation> collection;
     for (auto typographic = d->fontFamilyCollection.childBegin(); typographic != d->fontFamilyCollection.childEnd(); typographic++) {
         auto counter = childBegin(typographic);
+        if (counter == childEnd(typographic)) continue;
         counter++;
         bool singleFamily = childBegin(typographic) != childEnd(typographic) && std::next(childBegin(typographic)) == childEnd(typographic);
 
@@ -1029,54 +1030,73 @@ QList<KoFontFamilyWWSRepresentation> KoFFWWSConverter::collectFamilies() const
 }
 
 KisForest<FontFamilyNode>::composition_iterator searchNodes (KisForest<FontFamilyNode>::composition_iterator it, KisForest<FontFamilyNode>::composition_iterator endIt, const QString family) {
-    QString familySimplified = family;
-    QString familyLower = family.toLower();
+    QString familySimplified;
     // Qt's fontdatabase would add the vendor in [] behind the font name, when there were duplicates,
     // though sometimes there was no such explanation, so we should check against that...
     if (family.endsWith("]") && family.contains("[")) {
-        familySimplified = family.split("[", Qt::SkipEmptyParts).first().trimmed().toLower();
+        familySimplified = family.split("[", Qt::SkipEmptyParts).first().trimmed();
     }
+
+    auto partialMatch = endIt;
+
+    auto presentInLocalizedNames = [&familySimplified, &family](const QHash<QLocale, QString> &localizedFontFamilies, bool partialMatch) {
+        auto matchingLocalizedFamilyIt = partialMatch? std::find_if(
+            localizedFontFamilies.begin(),
+            localizedFontFamilies.end(),
+            [&](const QString &localizedFamily) {
+                return localizedFamily.contains(family, Qt::CaseInsensitive)
+                    || (!familySimplified.isEmpty() && localizedFamily.contains(familySimplified, Qt::CaseInsensitive));
+            }) : std::find_if(
+            localizedFontFamilies.begin(),
+            localizedFontFamilies.end(),
+            [&](const QString &localizedFamily) {
+                return localizedFamily.compare(family, Qt::CaseInsensitive)
+                || (!familySimplified.isEmpty() && localizedFamily.compare(familySimplified, Qt::CaseInsensitive));
+            });
+
+        return matchingLocalizedFamilyIt != localizedFontFamilies.end();
+    };
+
     for (; it != endIt; it++) {
         if (it.state() == KisForestDetail::Enter) {
             continue;
         }
 
         if (childBegin(it) == childEnd(it)) {
-            // For the lowest nodes, we only want to test the full name.
-            QStringList local = it->localizedFullName.values();
+            if (
+                // For the lowest nodes, we only want to test the full name.
+                presentInLocalizedNames(it->localizedFullName, false)
 
-            // For some fonts, the full name is the exact same as the typographic family name,
-            // in which case, we want to ignore the full name.
-            QStringList localFamily = it->localizedFontFamilies.values();
-            bool inLocalFamilyToo = (localFamily.contains(familySimplified, Qt::CaseInsensitive)
-                                  || localFamily.contains(familyLower, Qt::CaseInsensitive));
+                // For some fonts, the full name is the exact same as the typographic family name,
+                // in which case, we want to ignore the full name.
+                || presentInLocalizedNames(it->localizedFontFamilies, false)) {
 
-            if (local.contains(familySimplified, Qt::CaseInsensitive)
-                    || local.contains(familyLower, Qt::CaseInsensitive)) {
-                if (inLocalFamilyToo) continue;
+
                 break;
             } else {
                 continue;
             }
         }
 
-        QStringList local = it->localizedFontFamilies.values();
-        QString itFamilyLower = QString(it->fontFamily).toLower();
-        if (itFamilyLower == familySimplified
-                || itFamilyLower == familyLower
-                || local.contains(familySimplified, Qt::CaseInsensitive)
-                || local.contains(familyLower, Qt::CaseInsensitive)) {
+        if (it->fontFamily.compare(family, Qt::CaseInsensitive) == 0
+            || (!familySimplified.isEmpty() && it->fontFamily.compare(familySimplified, Qt::CaseInsensitive) == 0)
+            || presentInLocalizedNames(it->localizedFontFamilies, false)) {
             break;
+        } else if (it->fontFamily.compare(family, Qt::CaseInsensitive) == 0
+                   || (!familySimplified.isEmpty() && it->fontFamily.compare(familySimplified, Qt::CaseInsensitive) == 0)
+                   || presentInLocalizedNames(it->localizedFontFamilies, true)) {
+                partialMatch = it;
+            continue;
         }
-
     }
-    return it;
+    return it != endIt? it: partialMatch != endIt? partialMatch: it;
 }
 
 std::optional<KoFontFamilyWWSRepresentation> KoFFWWSConverter::representationByFamilyName(const QString &familyName) const
 {
     for (auto typographic = d->fontFamilyCollection.childBegin(); typographic != d->fontFamilyCollection.childEnd(); typographic++) {
         auto counter = childBegin(typographic);
+        if (counter == childEnd(typographic)) continue;
         counter++;
         bool singleFamily = counter == childEnd(typographic);
 

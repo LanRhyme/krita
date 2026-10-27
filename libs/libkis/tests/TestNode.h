@@ -19,7 +19,7 @@ private Q_SLOTS:
     void testThumbnail();
     void testMergeDown();
     void testFindChildNodes();
+    void testStrokePoint();
 };
 
 #endif
-

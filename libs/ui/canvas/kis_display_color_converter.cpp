@@ -259,7 +259,7 @@ struct KisDisplayColorConverter::Private
     QScopedPointer<KoColorDisplayRendererInterface> displayRenderer;
 };
 
-KisDisplayColorConverter::KisDisplayColorConverter(KoCanvasResourceProvider *resourceManager, QObject *parent)
+KisDisplayColorConverter::KisDisplayColorConverter(KoCanvasResourceProvider *resourceManager, QObject *parent, bool reactOnThemeChange)
     : QObject(parent),
       m_d(new Private(this, resourceManager))
 {
@@ -274,7 +274,9 @@ KisDisplayColorConverter::KisDisplayColorConverter(KoCanvasResourceProvider *res
     setDisplayFilter(QSharedPointer<KisDisplayFilter>(0));
     updatePalettes();
     connect(this, SIGNAL(displayConfigurationChanged()), this, SLOT(updatePalettes()));
-    connect(KisPart::instance()->currentMainwindow(), SIGNAL(themeChanged()), this, SLOT(updatePalettes()));
+    
+    if(reactOnThemeChange)
+        connect(KisPart::instance()->currentMainwindow(), SIGNAL(themeChanged()), this, SLOT(updatePalettes()));
 }
 
 KisDisplayColorConverter::KisDisplayColorConverter()

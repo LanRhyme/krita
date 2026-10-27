@@ -18,6 +18,8 @@
 #include "filter/kis_filter_registry.h"
 
 #include "kis_image.h"
+#include "kis_node_visitor.h"
+#include "kis_external_layer_iface.h"
 #include "kis_paint_layer.h"
 #include "kis_group_layer.h"
 #include "kis_adjustment_layer.h"
@@ -206,6 +208,212 @@ void KisImageTest::testConvertImageColorSpace()
 
     image->refreshGraphAsync();
     image->waitForDone();
+}
+
+void KisImageTest::testChannelFlagsAfterColorSpaceConversion_data()
+{
+    QTest::addColumn<QString>("layerType"); // "paint", "external", "group",
+    QTest::addColumn<QString>("channelsMode"); // "empty", "inheritAlpha", "alphaOnly", "firstChannel"
+    QTest::addColumn<QString>("imageColorSpaceModelMode"); // "src", "dst", "cmyk"
+    QTest::addColumn<QString>("srcColorSpaceModel");
+    QTest::addColumn<QString>("dstColorSpaceModel");
+    QTest::addColumn<QBitArray>("expectedChannelFlags");
+
+    auto strToBitArray = [] (const QString &str) {
+        QBitArray result(str.size());
+        for (auto it = str.begin(); it != str.end(); ++it) {
+            result.setBit(std::distance(str.begin(), it), *it == '1');
+        }
+        return result;
+    };
+
+    /**
+     * The general requirements for channel flags preservation on color space change:
+     *
+     * 1) Color channels are always reset into "all enabled" state
+     * 2) If alpha channel was disabled, this disabled state will be preserved
+     *    during the conversion stage.
+     * 3) If all the channel are enabled after the conversion, then
+     *    the channel flags object is reset into empty state
+     */
+
+    for (const char *imageColorSpaceModelMode : {"src", "dst", "cmyk"}) {
+        for (const char *layerType : {"paint", "external", "group"}) {
+            QTest::addRow("img_cs_%s-%s-rgb2gray-empty", imageColorSpaceModelMode, layerType)
+                << layerType << "empty" << imageColorSpaceModelMode << RGBAColorModelID.id() << GrayAColorModelID.id()
+                << strToBitArray("");
+            QTest::addRow("img_cs_%s-%s-rgb2gray-inheritAlpha", imageColorSpaceModelMode, layerType)
+                << layerType << "inheritAlpha" << imageColorSpaceModelMode << RGBAColorModelID.id()
+                << GrayAColorModelID.id() << strToBitArray("10");
+            QTest::addRow("img_cs_%s-%s-rgb2gray-alphaOnly", imageColorSpaceModelMode, layerType)
+                << layerType << "alphaOnly" << imageColorSpaceModelMode << RGBAColorModelID.id()
+                << GrayAColorModelID.id() << strToBitArray("");
+            QTest::addRow("img_cs_%s-%s-rgb2gray-firstChannel", imageColorSpaceModelMode, layerType)
+                << layerType << "firstChannel" << imageColorSpaceModelMode << RGBAColorModelID.id()
+                << GrayAColorModelID.id() << strToBitArray("10");
+
+            QTest::addRow("img_cs_%s-%s-gray2rgb-empty", imageColorSpaceModelMode, layerType)
+                << layerType << "empty" << imageColorSpaceModelMode << GrayAColorModelID.id() << RGBAColorModelID.id()
+                << strToBitArray("");
+            QTest::addRow("img_cs_%s-%s-gray2rgb-inheritAlpha", imageColorSpaceModelMode, layerType)
+                << layerType << "inheritAlpha" << imageColorSpaceModelMode << GrayAColorModelID.id()
+                << RGBAColorModelID.id() << strToBitArray("1110");
+            QTest::addRow("img_cs_%s-%s-gray2rgb-alphaOnly", imageColorSpaceModelMode, layerType)
+                << layerType << "alphaOnly" << imageColorSpaceModelMode << GrayAColorModelID.id()
+                << RGBAColorModelID.id() << strToBitArray("");
+            QTest::addRow("img_cs_%s-%s-gray2rgb-firstChannel", imageColorSpaceModelMode, layerType)
+                << layerType << "firstChannel" << imageColorSpaceModelMode << GrayAColorModelID.id()
+                << RGBAColorModelID.id() << strToBitArray("1110");
+        }
+    }
+}
+
+namespace
+{
+class TestingExternalLayer : public KisExternalLayer
+{
+public:
+    TestingExternalLayer(KisImageWSP image, const QString &name, quint8 opacity, const KoColorSpace *cs)
+        : KisExternalLayer(image, name, opacity)
+        , m_original(new KisPaintDevice(cs))
+    {
+    }
+
+    KisNodeSP clone() const override
+    {
+        TestingExternalLayer *result = new TestingExternalLayer(image(), name(), opacity(), m_original->colorSpace());
+        result->m_original->makeCloneFromRough(m_original, m_original->extent());
+        return result;
+    }
+
+    bool allowAsChild(KisNodeSP) const override
+    {
+        return true;
+    }
+
+    KisPaintDeviceSP original() const override
+    {
+        return m_original;
+    }
+
+    KisPaintDeviceSP paintDevice() const override
+    {
+        return 0;
+    }
+
+    bool accept(KisNodeVisitor &visitor) override
+    {
+        return visitor.visit(this);
+    }
+
+    void accept(KisProcessingVisitor &visitor, KisUndoAdapter *undoAdapter) override
+    {
+        return visitor.visit(this, undoAdapter);
+    }
+
+    KUndo2Command *setProfile(const KoColorProfile *profile) override
+    {
+        KUndo2Command *cmd = new KUndo2Command();
+        m_original->setProfile(profile, cmd);
+
+        return cmd;
+    }
+
+    KUndo2Command *convertTo(const KoColorSpace *dstColorSpace,
+                             KoColorConversionTransformation::Intent renderingIntent,
+                             KoColorConversionTransformation::ConversionFlags conversionFlags) override
+    {
+        KUndo2Command *cmd = new KUndo2Command();
+        m_original->convertTo(dstColorSpace, renderingIntent, conversionFlags, cmd);
+        return cmd;
+    }
+
+private:
+    KisPaintDeviceSP m_original;
+};
+
+} // namespace
+
+void KisImageTest::testChannelFlagsAfterColorSpaceConversion()
+{
+    QFETCH(QString, layerType);
+    QFETCH(QString, channelsMode);
+    QFETCH(QString, imageColorSpaceModelMode);
+    QFETCH(QString, srcColorSpaceModel);
+    QFETCH(QString, dstColorSpaceModel);
+    QFETCH(QBitArray, expectedChannelFlags);
+
+    QString imageColorSpaceModel;
+    QString imageColorSpaceBitDepth = Integer8BitsColorDepthID.id();
+
+    if (imageColorSpaceModelMode == "src") {
+        imageColorSpaceModel = srcColorSpaceModel;
+    } else if (imageColorSpaceModelMode == "dst") {
+        // when converting into the same color model, make sure
+        // we also change the bit depth, otherfise the whole
+        // operation will be skipped
+        imageColorSpaceModel = dstColorSpaceModel;
+        imageColorSpaceBitDepth = Integer16BitsColorDepthID.id();
+    } else if (imageColorSpaceModelMode == "cmyk") {
+        imageColorSpaceModel = CMYKAColorModelID.id();
+    } else {
+        qFatal("Unknown image color space model testing mode: %s", imageColorSpaceModelMode.toLatin1().data());
+    }
+
+    const KoColorSpace *srcCS = KoColorSpaceRegistry::instance()->colorSpace(srcColorSpaceModel, Integer8BitsColorDepthID.id(), nullptr);
+    const KoColorSpace *imageCS = KoColorSpaceRegistry::instance()->colorSpace(imageColorSpaceModel, imageColorSpaceBitDepth, nullptr);
+    auto *undoStore = new KisSurrogateUndoStore();
+    KisImageSP image = new KisImage(undoStore, 1000, 1000, imageCS, "stest");
+
+
+    KisLayerSP layer1;
+
+    if (layerType == "paint") {
+        KisPaintDeviceSP device1 = new KisPaintDevice(srcCS);
+        layer1 = new KisPaintLayer(image, "paint1", OPACITY_OPAQUE_U8, device1);
+    } else if (layerType == "external") {
+        layer1 = new TestingExternalLayer(image, "external1", OPACITY_OPAQUE_U8, srcCS);
+    } else if (layerType == "group") {
+        layer1 = new KisGroupLayer(image, "group1", OPACITY_OPAQUE_U8, srcCS);
+    } else {
+        qFatal("Unknown layer type: %s", layerType.toLatin1().data());
+    }
+
+    image->addNode(layer1, image->root());
+
+    const QBitArray initialChannelFlags = [&] () {
+        if (channelsMode == "empty") {
+            return QBitArray();
+        } else if (channelsMode == "inheritAlpha") {
+            return srcCS->channelFlags(true, false);
+        } else if (channelsMode == "alphaOnly") {
+            return srcCS->channelFlags(false, true);
+        } else if (channelsMode == "firstChannel") {
+            QBitArray channelFlags = srcCS->channelFlags(false, false);
+            channelFlags.setBit(0, true);
+            return channelFlags;
+        } else {
+            qFatal("Unknown channel flags testing mode!");
+        }
+        Q_UNREACHABLE_RETURN(QBitArray());
+    }();
+
+    layer1->setChannelFlags(initialChannelFlags);
+    image->initialRefreshGraph();
+    QCOMPARE(*layer1->colorSpace(), *srcCS);
+    QCOMPARE(layer1->channelFlags(), initialChannelFlags);
+
+    const KoColorSpace *dstCS = KoColorSpaceRegistry::instance()->colorSpace(dstColorSpaceModel, Integer8BitsColorDepthID.id(), nullptr);
+    image->convertImageColorSpace(dstCS,
+                                  KoColorConversionTransformation::internalRenderingIntent(),
+                                  KoColorConversionTransformation::internalConversionFlags());
+    image->waitForDone();
+    QCOMPARE(*layer1->colorSpace(), *dstCS);
+    QCOMPARE(layer1->channelFlags(), expectedChannelFlags);
+
+    undoStore->undo();
+    image->waitForDone();
+    QCOMPARE(layer1->channelFlags(), initialChannelFlags);
 }
 
 void KisImageTest::testAssignImageProfile()
@@ -1301,6 +1509,140 @@ void KisImageTest::testPaintOverlayMask()
     p.image->waitForDone();
 
     KIS_DUMP_DEVICE_2(p.image->projection(), refRect, "03_deactivated", "dd");
+}
+
+void KisImageTest::testHdrReferenceWhite_data()
+{
+    #if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+    QTest::addColumn<const KoColorSpace*>("srcSpace");
+    QTest::addColumn<const KoColorSpace*>("dstSpace");
+    QTest::addColumn<double>("expectedOriginalHdrReferenceWhite");
+    QTest::addColumn<double>("srcHdrReferenceWhite");
+    QTest::addColumn<double>("expectedDstHdrReferenceWhite");
+
+    const double noHdrReferenceWhite = -1;
+
+    auto *sRGBu8 = KoColorSpaceRegistry::instance()->colorSpace(
+        RGBAColorModelID.id(),
+        Integer8BitsColorDepthID.id(),
+        KoColorSpaceRegistry::instance()->p709SRGBProfile());
+
+    auto *rec2020g10u16 = KoColorSpaceRegistry::instance()->colorSpace(
+        RGBAColorModelID.id(),
+        Integer16BitsColorDepthID.id(),
+        KoColorSpaceRegistry::instance()->p2020G10Profile());
+
+    auto *rec2020g10f16 = KoColorSpaceRegistry::instance()->colorSpace(
+        RGBAColorModelID.id(),
+        Float16BitsColorDepthID.id(),
+        KoColorSpaceRegistry::instance()->p2020G10Profile());
+
+    auto *rec2020pqu16_203 = KoColorSpaceRegistry::instance()->colorSpace(
+        RGBAColorModelID.id(),
+        Integer16BitsColorDepthID.id(),
+        KoColorSpaceRegistry::instance()->profileByName("Krita Rec. 2100 Perceptual Quantizer (203cd/m²)"));
+
+    auto *rec2020pqu16_80 = KoColorSpaceRegistry::instance()->colorSpace(
+        RGBAColorModelID.id(),
+        Integer16BitsColorDepthID.id(),
+        KoColorSpaceRegistry::instance()->profileByName("Krita Rec. 2100 Perceptual Quantizer (80cd/m²)"));
+
+    // from SDR to display-referred HDR
+    QTest::addRow("srgb-to-rec2020pq_203")
+        << sRGBu8 << rec2020pqu16_203
+        << noHdrReferenceWhite << noHdrReferenceWhite << 203.0;
+
+    // from scene-referred HDR to display-referred HDR
+    QTest::addRow("rec2020g10f16-to-rec2020pq_203")
+        << rec2020g10f16 << rec2020pqu16_203
+        << noHdrReferenceWhite << noHdrReferenceWhite << 203.0;
+
+    // from scene-referred HDR with custom HDR Reference White
+    // to display-referred HDR
+        QTest::addRow("rec2020g10f16_116-to-rec2020pq_203")
+        << rec2020g10f16 << rec2020pqu16_203
+        << noHdrReferenceWhite << 116.0 << 203.0;
+
+    // from display-referred HDR (80 nits) to another
+    // display-referred HDR (203 nits)
+    QTest::addRow("rec2020pq_80-to-rec2020pq_203")
+        << rec2020pqu16_80 << rec2020pqu16_203
+        << 80.0 << noHdrReferenceWhite << 203.0;
+
+    // from display referred HDR to untagged scene-referred
+    // (the metadata should persist)
+    QTest::addRow("rec2020pq_203-to-rec2020g10f16")
+        << rec2020pqu16_203 << rec2020g10f16
+        << 203.0 << noHdrReferenceWhite << 203.0;
+
+    // from display referred HDR to clipped integer scene-referred
+    // (the metadata should be dropped)
+    QTest::addRow("rec2020pq_203-to-rec2020g10u")
+        << rec2020pqu16_203 << rec2020g10u16
+        << 203.0 << noHdrReferenceWhite << noHdrReferenceWhite;
+
+    // from display referred HDR to clipped integer sRGB
+    // (the metadata should be dropped)
+    QTest::addRow("rec2020pq_203-to-srgb")
+        << rec2020pqu16_203 << sRGBu8
+        << 203.0 << noHdrReferenceWhite << noHdrReferenceWhite;
+    #endif
+}
+
+void KisImageTest::testHdrReferenceWhite()
+{
+#if (QT_VERSION >= QT_VERSION_CHECK(6, 0, 0))
+    auto optionalFromDouble = [] (double value) {
+        return value >= 0 ? std::make_optional(value) : std::optional<double>();
+    };
+
+    QFETCH(const KoColorSpace*, srcSpace);
+    QFETCH(const KoColorSpace*, dstSpace);
+
+    QFETCH(double, expectedOriginalHdrReferenceWhite);
+    QFETCH(double, srcHdrReferenceWhite);
+    QFETCH(double, expectedDstHdrReferenceWhite);
+
+    const QRect imageRect(0, 0, 32,32);
+
+    KisUndoStore *undoStore = new KisSurrogateUndoStore();
+    KisImageSP image = new KisImage(undoStore, imageRect.width(), imageRect.height(), srcSpace, "test image");
+
+    QCOMPARE(image->hdrReferenceWhiteLightLevel(), optionalFromDouble(expectedOriginalHdrReferenceWhite));
+
+    // assign the new reference white only when requested
+    if (srcHdrReferenceWhite >= 0) {
+        image->setHdrReferenceWhiteLightLevel(optionalFromDouble(srcHdrReferenceWhite));
+        QCOMPARE(image->hdrReferenceWhiteLightLevel(), optionalFromDouble(srcHdrReferenceWhite));
+    }
+
+    image->convertImageColorSpace(dstSpace, KoColorConversionTransformation::internalRenderingIntent(), KoColorConversionTransformation::internalConversionFlags());
+    image->waitForDone();
+
+    QCOMPARE(image->hdrReferenceWhiteLightLevel(), optionalFromDouble(expectedDstHdrReferenceWhite));
+#endif
+}
+
+void KisImageTest::testHdrReferenceWhiteCloning()
+{
+    const QRect imageRect(0, 0, 32,32);
+
+    auto *rec2020g10f16 = KoColorSpaceRegistry::instance()->colorSpace(
+        RGBAColorModelID.id(),
+        Float16BitsColorDepthID.id(),
+        KoColorSpaceRegistry::instance()->p2020G10Profile());
+
+    KisUndoStore *undoStore = new KisSurrogateUndoStore();
+    KisImageSP image = new KisImage(undoStore, imageRect.width(), imageRect.height(), rec2020g10f16, "test image");
+
+    image->setHdrReferenceWhiteLightLevel(116);
+
+    KisImageSP clonedExactCopyImage = image->clone(true);
+    QCOMPARE(clonedExactCopyImage->hdrReferenceWhiteLightLevel(), 116);
+
+    KisImageSP clonedInexactCopyImage = image->clone(false);
+    QCOMPARE(clonedInexactCopyImage->hdrReferenceWhiteLightLevel(), 116);
+
 }
 
 KISTEST_MAIN(KisImageTest)

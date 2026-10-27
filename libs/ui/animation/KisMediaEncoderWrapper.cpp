@@ -2,12 +2,15 @@
  *  SPDX-License-Identifier: GPL-3.0-or-later
  */
 #include <QAtomicInt>
+#include <QCoreApplication>
 #include <QImage>
 #include <QImageReader>
+#include <QProgressDialog>
 #include <QRunnable>
 #include <QThreadPool>
 
 #include <functional>
+#include <memory>
 
 #include <klocalizedstring.h>
 
@@ -19,6 +22,7 @@
 #ifdef Q_OS_ANDROID
 #include "KisAndroidMediaEncoderRunnable.h"
 #endif
+#include "KisLibavMediaEncoderRunnable.h"
 
 void KisMediaEncoderRunnable::slotHandleCancelRequested()
 {
@@ -96,8 +100,12 @@ bool KisMediaEncoderRunnable::nextFrame(Frame &outFrame)
         }
 
         if (instances != 0) {
-            m_outputFrameNo += instances;
-            Q_EMIT sigProgressUpdated(m_outputFrameNo);
+            // GIF must spin through the input frames twice, once to generate a
+            // palette and then again to actually render the animated image. It
+            // sets the multiplier to 0.5 so that the progress bar shows values
+            // that make sense for the user, rather than reaching 100% halfway.
+            m_outputFrameNo += double(instances) * m_outputFrameNoMultiplier;
+            Q_EMIT sigProgressUpdated(int(m_outputFrameNo));
 
             // If we're on the last frame, we can append the linger time.
             if (fileIndex == lastIndex && m_needsLingerAfter) {
@@ -120,6 +128,14 @@ bool KisMediaEncoderRunnable::nextFrame(Frame &outFrame)
     }
 
     return false;
+}
+
+void KisMediaEncoderRunnable::rewindFrames()
+{
+    m_inputTime = 0;
+    m_inputFileIndex = 0;
+    m_needsPreviewBefore = true;
+    m_needsLingerAfter = true;
 }
 
 KisMediaEncoderRunnable::EncodeResult KisMediaEncoderRunnable::prepareAndEncode(QString &outErrorMessage)
@@ -145,6 +161,83 @@ KisMediaEncoderWrapper::KisMediaEncoderWrapper(QObject *parent)
 KisMediaEncoderWrapper::~KisMediaEncoderWrapper()
 {
     reset();
+}
+
+KisImportExportErrorCode KisMediaEncoderWrapper::start(const KisMediaEncoderWrapperSettings &settings, bool batchMode)
+{
+    reset();
+
+    KisMediaEncoderRunnable *runnable = makeSupportedRunnable(settings);
+    KisImportExportErrorCode errorCode(ImportExportCodes::InternalError);
+    if (runnable) {
+        connect(
+            runnable,
+            &KisMediaEncoderRunnable::sigCompleted,
+            this,
+            [&errorCode] {
+                errorCode = KisImportExportErrorCode(ImportExportCodes::OK);
+            },
+            Qt::DirectConnection);
+        connect(
+            runnable,
+            &KisMediaEncoderRunnable::sigCancelled,
+            this,
+            [&errorCode] {
+                errorCode = KisImportExportErrorCode(ImportExportCodes::Cancelled);
+            },
+            Qt::DirectConnection);
+        connect(
+            runnable,
+            &KisMediaEncoderRunnable::sigFailed,
+            this,
+            [&errorCode](const QString &errorMessage) {
+                errorCode = KisImportExportErrorCode(errorMessage);
+            },
+            Qt::DirectConnection);
+        connect(this,
+                &KisMediaEncoderWrapper::sigCancelRequested,
+                runnable,
+                &KisMediaEncoderRunnable::slotHandleCancelRequested,
+                Qt::DirectConnection);
+
+        QProgressDialog *progressDlg;
+        if (batchMode) {
+            progressDlg = nullptr;
+        } else {
+            progressDlg = new QProgressDialog;
+            progressDlg->setLabelText(i18n("Rendering animation..."));
+            connect(
+                runnable,
+                &KisMediaEncoderRunnable::sigProgressUpdated,
+                this,
+                [progressDlg, frameCount = settings.inputFiles.size()](int frameNo) {
+                    int progress;
+                    if (frameNo < 0) {
+                        progress = 0;
+                    } else if (frameNo >= frameCount) {
+                        progress = 100;
+                    } else {
+                        progress = qRound(qreal(frameNo) / qreal(frameCount) * 100.0);
+                    }
+                    progressDlg->setValue(progress);
+                    QCoreApplication::processEvents();
+                },
+                Qt::DirectConnection);
+            connect(progressDlg,
+                    &QProgressDialog::canceled,
+                    this,
+                    &KisMediaEncoderWrapper::sigCancelRequested,
+                    Qt::DirectConnection);
+            progressDlg->show();
+            QCoreApplication::processEvents();
+        }
+
+        m_runnable = runnable;
+        runnable->run();
+        delete runnable;
+        delete progressDlg;
+    }
+    return errorCode;
 }
 
 void KisMediaEncoderWrapper::startNonBlocking(const KisMediaEncoderWrapperSettings &settings)
@@ -211,6 +304,7 @@ const QVector<KisMediaEncoderFormat *> &KisMediaEncoderWrapper::getSupportedForm
 #ifdef Q_OS_ANDROID
         KisAndroidMediaEncoderRunnable::getSupportedFormats(*supportedFormats);
 #endif
+        KisLibavMediaEncoderRunnable::getSupportedFormats(*supportedFormats);
     }
     return *supportedFormats;
 }
@@ -237,6 +331,12 @@ KisMediaEncoderRunnable *KisMediaEncoderWrapper::makeSupportedRunnable(const Kis
         }
     }
 #endif
+    {
+        KisLibavMediaEncoderRunnable *libavRunnable = KisLibavMediaEncoderRunnable::create(settings);
+        if (libavRunnable) {
+            return libavRunnable;
+        }
+    }
 
     return nullptr;
 }

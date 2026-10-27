@@ -14,6 +14,8 @@
 
 #include <kritaui_export.h>
 
+#include "KisImportExportErrorCode.h"
+
 class QImage;
 class QWidget;
 
@@ -22,6 +24,7 @@ class KRITAUI_EXPORT KisMediaEncoderFormat
 public:
     enum class Type {
         AndroidMediaEncoder,
+        LibavMediaEncoder,
     };
 
     virtual ~KisMediaEncoderFormat() = default;
@@ -30,6 +33,7 @@ public:
     virtual QString key() const = 0;
     virtual QString title() const = 0;
     virtual QString extension() const = 0;
+    virtual bool supportsAudio() const = 0;
 
     virtual QWidget *createPreferencesWidget(const QVariantMap &preferences) const = 0;
     virtual void resetPreferencesWidget(QWidget *widget) const = 0;
@@ -42,13 +46,16 @@ protected:
 struct KRITAUI_EXPORT KisMediaEncoderWrapperSettings {
     QString outputFile;
     QStringList inputFiles;
+    QString audioFile;
     KisMediaEncoderFormat *format;
     QVariantMap formatPreferences;
+    QString scaleFilter;
     QSize outputSize;
     int inputFps;
     int outputFps;
     int firstFrameSec;
     int lastFrameSec;
+    int audioSeekFrame;
 };
 
 // Intentionally not exported, this is only needed internally.
@@ -85,6 +92,11 @@ protected:
         {
         }
 
+        const QString &path() const
+        {
+            return m_path;
+        }
+
         int instances() const
         {
             return m_instances;
@@ -111,7 +123,13 @@ protected:
         return m_cancel;
     }
 
+    void setOutputFrameNoMultiplier(double outputFrameNoMultiplier)
+    {
+        m_outputFrameNoMultiplier = outputFrameNoMultiplier;
+    }
+
     bool nextFrame(Frame &outFrame);
+    void rewindFrames();
 
 private:
     EncodeResult prepareAndEncode(QString &outErrorMessage);
@@ -119,7 +137,8 @@ private:
     KisMediaEncoderWrapperSettings m_settings;
     double m_inputTime = 0.0;
     int m_inputFileIndex = 0;
-    int m_outputFrameNo = 0;
+    double m_outputFrameNo = 0.0;
+    double m_outputFrameNoMultiplier = 1.0;
     bool m_needsPreviewBefore = true;
     bool m_needsLingerAfter = true;
     bool m_cancel = false;
@@ -133,6 +152,7 @@ public:
     explicit KisMediaEncoderWrapper(QObject *parent = nullptr);
     ~KisMediaEncoderWrapper() override;
 
+    KisImportExportErrorCode start(const KisMediaEncoderWrapperSettings &settings, bool batchMode);
     void startNonBlocking(const KisMediaEncoderWrapperSettings &settings);
     void reset();
 

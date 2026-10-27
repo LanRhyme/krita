@@ -107,6 +107,7 @@
 #include <KisAndroidUtils.h>
 #endif
 
+#include <KisScopedPerformanceLogger.h>
 #include <KisUsageLogger.h>
 #include <brushengine/kis_paintop_settings.h>
 #include "dialogs/kis_about_application.h"
@@ -161,6 +162,7 @@
 #include "KisToolBarStateModel.h"
 #include <config-qmdiarea-always-show-subwindow-title.h>
 #include <config-qt-patches-present.h>
+#include <KisPlatformPluginInterfaceFactory.h>
 
 #include <mutex>
 
@@ -365,6 +367,8 @@ KisMainWindow::KisMainWindow(QUuid uuid)
     : KXmlGuiWindow()
     , d(new Private(this, uuid))
 {
+    KisScopedPerformanceLogger perfLog(QStringLiteral("KisMainWindow::KisMainWindow"));
+
     KAcceleratorManager::setNoAccel(this);
 
     d->workspacemodel = new KisResourceModel(ResourceType::Workspaces, this);
@@ -393,7 +397,7 @@ KisMainWindow::KisMainWindow(QUuid uuid)
 
     connect(this, SIGNAL(restoringDone()), this, SLOT(forceDockTabFonts()));
     connect(this, SIGNAL(themeChanged()), d->viewManager, SLOT(updateIcons()));
-    connect(this, SIGNAL(themeChanged()), KoToolManager::instance(), SLOT(themeChanged()));
+    connect(this, SIGNAL(themeChanged()), d->viewManager->toolManager(), SLOT(themeChanged()));
     connect(KisPart::instance(), SIGNAL(documentClosed(QString)), SLOT(updateWindowMenu()));
     connect(KisPart::instance(), SIGNAL(documentOpened(QString)), SLOT(updateWindowMenu()));
     connect(KisConfigNotifier::instance(), SIGNAL(configChanged()), this, SLOT(configChanged()));
@@ -421,8 +425,8 @@ KisMainWindow::KisMainWindow(QUuid uuid)
     if (toolbox) {
         dockwidgetActions[toolbox->toggleViewAction()->text()] = toolbox->toggleViewAction();
     }
-    Q_FOREACH (const QString & docker, KoDockRegistry::instance()->keys()) {
-        KoDockFactoryBase *factory = KoDockRegistry::instance()->value(docker);
+
+    for (KoDockFactoryBase *factory : KoDockRegistry::instance()->sortedDockWidgetFactories()) {
         QDockWidget *dw = createDockWidget(factory);
         if (dw) {
             dockwidgetActions[dw->toggleViewAction()->text()] = dw->toggleViewAction();
@@ -432,7 +436,7 @@ KisMainWindow::KisMainWindow(QUuid uuid)
     if (d->toolOptionsDocker) {
         dockwidgetActions[d->toolOptionsDocker->toggleViewAction()->text()] = d->toolOptionsDocker->toggleViewAction();
     }
-    connect(KoToolManager::instance(), SIGNAL(toolOptionWidgetsChanged(KoCanvasController*,QList<QPointer<QWidget> >)), this, SLOT(newOptionWidgets(KoCanvasController*,QList<QPointer<QWidget> >)));
+    connect(d->viewManager->toolManager(), SIGNAL(toolOptionWidgetsChanged(KoCanvasController*,QList<QPointer<QWidget> >)), this, SLOT(newOptionWidgets(KoCanvasController*,QList<QPointer<QWidget> >)));
 
     Q_FOREACH (QString title, dockwidgetActions.keys()) {
         d->dockWidgetMenu->addAction(dockwidgetActions[title]);
@@ -470,7 +474,7 @@ KisMainWindow::KisMainWindow(QUuid uuid)
     // Load all the actions from the tool plugins
     // ToolBoxDocker needs them when at setViewManager()
     Q_FOREACH(KoToolFactoryBase *toolFactory, KoToolRegistry::instance()->values()) {
-        toolFactory->createActions(actionCollection());
+        toolFactory->createActions(actionCollection(), d->viewManager->toolManager());
     }
 
 
@@ -554,9 +558,9 @@ KisMainWindow::KisMainWindow(QUuid uuid)
         connect(d->helpMenu, SIGNAL(showAboutApplication()), SLOT(showAboutApplication()));
     }
 
-    // KDE' libs 4''s help contents action is broken outside kde, for some reason... We can handle it just as easily ourselves
+    // Custom handling of help action for manual URL outside docs.kde.org.
     QAction *helpAction = actionCollection()->action("help_contents");
-    helpAction->disconnect();
+    helpAction->disconnect(SIGNAL(triggered()));
     connect(helpAction, SIGNAL(triggered()), this, SLOT(showManual()));
 
 #if 0
@@ -783,6 +787,26 @@ void KisMainWindow::showView(KisView *imageView, QMdiSubWindow *subwin)
             QMdiSubWindow *currentSubWin = d->mdiArea->currentSubWindow();
             bool shouldMaximize = currentSubWin ? currentSubWin->isMaximized() : true;
             subwin = d->mdiArea->addSubWindow(imageView);
+
+            /**
+             * We set Qt::WA_DontCreateNativeAncestors in KisOpenGLCanvas2,
+             * so the parents will not receive native surfaces automatically.
+             * That is a problem for MDI-subwindows, since they may overlap.
+             * This overlapping cannot be resolved when the MDI-subwindow
+             * is an alien widget, but the wrapped widget is a native widget.
+             * The docorations of any subwindow will always be lower than
+             * the content of any of the subwindows.
+             *
+             * Therefore we explicitly create a native surface for every
+             * MDI-subwindow.
+             */
+            const bool osManagedSurfacePresent = KisPlatformPluginInterfaceFactory::instance()->surfaceColorManagedByOS();
+            const bool useNativeSurfaceForCanvas = KisConfig(true).effectiveShouldUseNativeSurfaceForCanvas(osManagedSurfacePresent);
+            if (useNativeSurfaceForCanvas) {
+                subwin->setAttribute(Qt::WA_DontCreateNativeAncestors);
+                subwin->setAttribute(Qt::WA_NativeWindow);
+            }
+
             if (shouldMaximize) {
                 subwin->setWindowState(Qt::WindowMaximized);
             }
@@ -830,7 +854,7 @@ void KisMainWindow::showView(KisView *imageView, QMdiSubWindow *subwin)
          * So here we just explicitly call the tool activation stub.
          */
 
-        KoToolManager::instance()->initializeCurrentToolForCanvas();
+        d->viewManager->toolManager()->initializeCurrentToolForCanvas();
 
         // No, no, no: do not try to call this _before_ the show() has
         // been called on the view; only when that has happened is the
@@ -992,7 +1016,8 @@ void KisMainWindow::customizeTabBar()
     QString tabStyleSheet = QStringLiteral(R"(
             QTabBar::close-button {
                 image: url(%1);
-                padding-top: 3px;
+                padding: 1.5px;
+                border-radius: 3px;
             }
             QTabBar::close-button:hover {
                 background-color: %2;
@@ -1506,7 +1531,7 @@ bool KisMainWindow::saveDocument(KisDocument *document, bool saveas, bool isExpo
                     }
                 }
                 else { // Export
-                    ret = document->exportDocument(newFilePath, outputFormat, isAdvancedExporting, true);
+                    ret = document->exportDocument(newFilePath, outputFormat, isAdvancedExporting, false);
                     if (ret) {
                         d->lastExportLocation = newFilePath;
                         d->lastExportedFormat = outputFormat;
@@ -2447,6 +2472,7 @@ QDockWidget* KisMainWindow::createDockWidget(KoDockFactoryBase* factory)
     const bool showTitlebars = KisConfig(false).showDockerTitleBars();
 
     if (!d->dockWidgetsMap.contains(factory->id())) {
+        KisScopedPerformanceLogger perfLog(QStringLiteral("KisMainWindow::createDockWidget(%1)").arg(factory->id()));
         dockWidget = factory->createDockWidget();
         KAcceleratorManager::setNoAccel(dockWidget);
 
@@ -2566,7 +2592,7 @@ void KisMainWindow::slotUpdateWidgetStyle()
                 d->themeManager->setCurrentTheme("System");
             }
 #else
-            if (currentStyle == "macos" || currentStyle == "windowsvista") {
+            if (currentStyle == "macos" || currentStyle == "windowsvista" || currentStyle == "windows11") {
                 d->themeManager->setCurrentTheme("System");
             }
 #endif
@@ -2879,6 +2905,9 @@ void KisMainWindow::configChanged()
     KisConfig cfg(true);
     QMdiArea::ViewMode viewMode = (QMdiArea::ViewMode)cfg.readEntry<int>("mdi_viewmode", (int)QMdiArea::TabbedView);
     d->mdiArea->setViewMode(viewMode);
+    //Do it here to avoid the wrong icon briefly flashing
+    customizeTabBar();
+
     Q_FOREACH (QMdiSubWindow *subwin, d->mdiArea->subWindowList()) {
         subwin->setOption(QMdiSubWindow::RubberBandMove, cfg.readEntry<int>("mdi_rubberband", cfg.useOpenGL()));
         subwin->setOption(QMdiSubWindow::RubberBandResize, cfg.readEntry<int>("mdi_rubberband", cfg.useOpenGL()));
@@ -3016,7 +3045,7 @@ QPointer<KisView> KisMainWindow::activeKisView()
 
 void KisMainWindow::newOptionWidgets(KoCanvasController *controller, const QList<QPointer<QWidget> > &optionWidgetList)
 {
-    KIS_ASSERT_RECOVER_NOOP(controller == KoToolManager::instance()->activeCanvasController());
+    KIS_ASSERT_RECOVER_NOOP(controller == d->viewManager->toolManager()->activeCanvasController());
     bool isOurOwnView = false;
 
     Q_FOREACH (QPointer<KisView> view, KisPart::instance()->views()) {
@@ -3385,49 +3414,7 @@ void KisMainWindow::applyActionIconOverridesFromLocalXML()
 void KisMainWindow::synchronizeDynamicActions()
 {
     // Add all actions with a menu property to the main window
-    Q_FOREACH(QAction *action, this->actionCollection()->actions()) {
-        QString menuLocation = action->property("menulocation").toString();
-        if (!menuLocation.isEmpty()) {
-            QAction *found = 0;
-            QList<QAction *> candidates = this->menuBar()->actions();
-            Q_FOREACH(const QString &name, menuLocation.split("/")) {
-                Q_FOREACH(QAction *candidate, candidates) {
-                    if (candidate->objectName().toLower() == name.toLower()) {
-                        found = candidate;
-                        candidates = candidate->menu()->actions();
-                        break;
-                    }
-                }
-                if (candidates.isEmpty()) {
-                    break;
-                }
-            }
-
-            if (found && found->menu()) {
-                QList<QAction *> existingActions = found->menu()->actions();
-
-                if (std::find_if(existingActions.begin(),
-                                 existingActions.end(),
-                                 kismpl::mem_equal_to(&QAction::objectName, action->objectName()))
-                    == existingActions.end()) {
-
-                    if (std::is_sorted(existingActions.begin(),
-                                       existingActions.end(),
-                                       kismpl::mem_less(&QAction::objectName))) {
-
-                        auto it = std::upper_bound(existingActions.begin(),
-                                                   existingActions.end(),
-                                                   action->objectName(),
-                                                   kismpl::mem_less(&QAction::objectName));
-                        found->menu()->insertAction(it != existingActions.end() ? *it : nullptr, action);
-
-                    } else {
-                        found->menu()->addAction(action);
-                    }
-                }
-            }
-        }
-    }
+    KisActionManager::synchronizeDynamicActions(this->actionCollection()->actions(), this->menuBar()->actions());
 }
 
 #include <moc_KisMainWindow.cpp>

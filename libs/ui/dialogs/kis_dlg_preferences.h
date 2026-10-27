@@ -73,8 +73,12 @@ public:
     qreal colorSamplerPreviewCircleThickness() const;
     bool colorSamplerPreviewCircleOutlineEnabled() const;
     bool colorSamplerPreviewCircleExtraCirclesEnabled() const;
+    qreal colorSamplerZoomPreviewScale() const;
+    bool colorSamplerZoomPreviewEnabled() const;
+    KisConfig::ColorSamplerPreviewCirclePosition colorSamplerPreviewCirclePosition() const;
 
     KisConfig::SessionOnStartup sessionOnStartup() const;
+    KisConfig::IconsInMenu iconsInMenu() const;
     bool saveSessionOnQuit() const;
 
     bool showRootLayer();
@@ -207,7 +211,6 @@ private Q_SLOTS:
 
     void refillMonitorProfiles(const KoID & s);
     void installProfile();
-    void toggleAllowMonitorProfileSelection(bool useSystemProfile);
     void toggleUseDefaultColorSpace(bool useDefColorSpace);
 
     void updateProofingDisplayInfo();

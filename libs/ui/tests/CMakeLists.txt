@@ -1,8 +1,10 @@
 kis_add_tests(
     kis_image_view_converter_test.cpp
     kis_shape_selection_test.cpp
+    kis_clipboard_test.cpp
     kis_coordinates_converter_test.cpp
     kis_grid_config_test.cpp
+    kis_temporary_paint_constraint_test.cpp
     kis_stabilized_events_sampler_test.cpp
     kis_shape_commands_test.cpp
     kis_stop_gradient_editor_test.cpp
@@ -20,6 +22,7 @@ kis_add_tests(
     kis_shape_layer_test.cpp
     KisSafeDocumentLoaderTest.cpp
     KisSurfaceColorSpaceWrapperTest.cpp
+    KisInputProfileManagerTest.cpp
 
     LINK_LIBRARIES kritaui kritalibkis kritatestsdk
     )
@@ -82,6 +85,12 @@ kis_add_test( kis_node_juggler_compressed_test.cpp  ../../../sdk/tests/testutil.
     LINK_LIBRARIES kritaui kritatestsdk
     )
 
+set_source_files_properties(
+    kis_input_manager_test.cpp
+    PROPERTIES
+    INCLUDE_DIRECTORIES "${Qt${QT_MAJOR_VERSION}Gui_PRIVATE_INCLUDE_DIRS}"
+    )
+
 kis_add_test(
     kis_input_manager_test.cpp ../../../sdk/tests/testutil.cpp
     TEST_NAME KisInputManagerTest
@@ -105,7 +114,7 @@ kis_add_test( kis_dummies_facade_test.cpp kis_dummies_facade_base_test.cpp ../..
     )
 
 kis_add_test(
-    kis_view_signals_test.cpp ../../../krita/krita.qrc
+    kis_view_signals_test.cpp "${CMAKE_BINARY_DIR}/krita/krita.qrc"
     TEST_NAME kis_view_signals_test
     LINK_LIBRARIES kritaui kritalibkis kritatestsdk
     )
@@ -117,11 +126,6 @@ kis_add_test(
 krita_add_broken_unit_test(
     kis_painting_assistants_decoration_test.cpp ../../../sdk/tests/testutil.cpp
     TEST_NAME KisPaintingAssistantsDecorationTest
-    LINK_LIBRARIES kritaui kritatestsdk
-    )
-
-krita_add_broken_unit_test( kis_clipboard_test.cpp
-    TEST_NAME KisClipboardTest
     LINK_LIBRARIES kritaui kritatestsdk
     )
 

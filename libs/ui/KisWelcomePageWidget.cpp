@@ -140,11 +140,6 @@ KisWelcomePageWidget::KisWelcomePageWidget(QWidget *parent)
     recentDocumentsListView->installEventFilter(this);
     recentDocumentsListView->setViewMode(QListView::IconMode);
     recentDocumentsListView->setSelectionMode(QAbstractItemView::NoSelection);
-
-//    m_recentItemDelegate.reset(new RecentItemDelegate(this));
-//    m_recentItemDelegate->setItemHeight(KisRecentDocumentsModelWrapper::ICON_SIZE_LENGTH);
-//    recentDocumentsListView->setItemDelegate(m_recentItemDelegate.data());
-    recentDocumentsListView->setIconSize(QSize(KisRecentDocumentsModelWrapper::ICON_SIZE_LENGTH, KisRecentDocumentsModelWrapper::ICON_SIZE_LENGTH));
     recentDocumentsListView->setVerticalScrollMode(QListView::ScrollPerPixel);
     recentDocumentsListView->verticalScrollBar()->setSingleStep(50);
     {
@@ -155,6 +150,7 @@ KisWelcomePageWidget::KisWelcomePageWidget(QWidget *parent)
     }
     recentDocumentsListView->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(recentDocumentsListView, SIGNAL(customContextMenuRequested(QPoint)), SLOT(slotRecentDocContextMenuRequest(QPoint)));
+    recentFilesResized();
 
     // News widget...
     QMenu *newsOptionsMenu = new QMenu(this);
@@ -172,6 +168,10 @@ KisWelcomePageWidget::KisWelcomePageWidget(QWidget *parent)
     btnNewsOptions->setMenu(newsOptionsMenu);
 
     labelSupportText->setFont(largerFont());
+
+    connect(btnDismisAll, SIGNAL(clicked()), newsWidget, SLOT(dismissAll()));
+    connect(newsWidget, SIGNAL(newsStateChanged(bool)), this, SLOT(newsStateChanged(bool)));
+    newsStateChanged(false);
 
     connect(showNewsAction, SIGNAL(toggled(bool)), newsWidget, SLOT(setVisible(bool)));
     connect(showNewsAction, SIGNAL(toggled(bool)), labelNoFeed, SLOT(setHidden(bool)));
@@ -270,7 +270,7 @@ void KisWelcomePageWidget::setMainWindow(KisMainWindow* mainWin)
         slotUpdateThemeColors();
 
         // allows RSS news items to apply analytics tracking.
-        newsWidget->setAnalyticsTracking("?" + analyticsString);
+        Q_EMIT newsWidget->setAnalyticsTracking("?" + analyticsString);
 
         KisRecentDocumentsModelWrapper *recentFilesModel = KisRecentDocumentsModelWrapper::instance();
         connect(recentFilesModel, SIGNAL(sigModelIsUpToDate()), this, SLOT(slotRecentFilesModelIsUpToDate()));
@@ -342,8 +342,10 @@ void KisWelcomePageWidget::slotUpdateThemeColors()
     btnNewsOptions->setIcon(KisIconUtils::loadIcon("view-choose"));
     btnNewsOptions->setFlat(true);
 
+    notifyIcon->setIcon(KisIconUtils::loadIcon("notification-dot"));
+
     supportKritaIcon->setIcon(KisIconUtils::loadIcon(QStringLiteral("support-krita")));
-    userManualIcon->setIcon(KisIconUtils::loadIcon(QStringLiteral("bookmarks")));
+    userManualIcon->setIcon(KisIconUtils::loadIcon(QStringLiteral("help-contents")));
     gettingStartedIcon->setIcon(KisIconUtils::loadIcon(QStringLiteral("get_started")));
     userCommunityIcon->setIcon(KisIconUtils::loadIcon(QStringLiteral("comunity")));
     kritaWebsiteIcon->setIcon(KisIconUtils::loadIcon(QStringLiteral("website")));
@@ -477,6 +479,8 @@ bool KisWelcomePageWidget::eventFilter(QObject *watched, QEvent *event)
 {
     if (watched == recentDocumentsListView && event->type() == QEvent::Leave) {
         recentDocumentsListView->clearSelection();
+    }else if (watched == recentDocumentsListView && event->type() == QEvent::Resize) {
+        recentFilesResized();
     }
     return QWidget::eventFilter(watched, event);
 }
@@ -1006,4 +1010,38 @@ QFont KisWelcomePageWidget::largerFont()
         larger.setPixelSize(qRound(larger.pixelSize() * ratio));
     }
     return larger;
+}
+
+void KisWelcomePageWidget::recentFilesResized()
+{
+    int scrollSize = qApp->style()->pixelMetric(QStyle::PM_SliderThickness);
+    int spacing = 8;
+
+    int iconLength = KisRecentDocumentsModelWrapper::DEFALT_ICON_SIZE_LENGTH + spacing;
+
+    int currentSize = recentDocumentsListView->size().width()-scrollSize-2;
+    int iconAmount = floor(currentSize/iconLength);
+    int length = floor(currentSize / iconAmount)-spacing;
+
+    recentDocumentsListView->setIconSize(QSize(length,length));
+}
+
+void KisWelcomePageWidget::newsStateChanged(bool hasNews)
+{
+    btnDismisAll->setVisible(hasNews);
+    notifyIcon->setVisible(hasNews);
+
+
+    //colapse or expand notifyIcon and btnDismisAll
+
+    QSizePolicy sizePolicy = notifyIcon->sizePolicy();
+    if (hasNews) {
+        sizePolicy.setHorizontalPolicy(QSizePolicy::Preferred);
+    } else {
+        sizePolicy.setHorizontalPolicy(QSizePolicy::Ignored);
+    }
+    notifyIcon->setSizePolicy(sizePolicy);
+
+    //notifyIcon and btnDismisAll should both have the same size policy
+    btnDismisAll->setSizePolicy(sizePolicy);
 }

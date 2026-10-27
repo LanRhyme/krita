@@ -14,6 +14,8 @@ set(KRITA_RECORDERDOCKER_SOURCES
     recorder_directory_cleaner.cpp
     recorderdocker.cpp
     recorderdocker_dock.cpp
+    recorder_export_preprocessor.cpp
+    recorder_image_copying_job.cpp
 )
 
 set(KRITA_RECORDERDOCKER_UIS

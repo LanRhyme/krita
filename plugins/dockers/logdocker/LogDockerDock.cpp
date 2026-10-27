@@ -292,10 +292,6 @@ void LogDockerDock::settings()
     chkScript->setChecked(cfg.readEntry("script_41011", false));
     layout->addWidget(chkScript);
 
-    QCheckBox *chkInput = new QCheckBox(i18n("Input handling"), page);
-    chkInput->setChecked(cfg.readEntry("input_41012", false));
-    layout->addWidget(chkInput);
-
     QCheckBox *chkAction = new QCheckBox(i18n("Actions"), page);
     chkAction->setChecked(cfg.readEntry("action_41013", false));
     layout->addWidget(chkAction);
@@ -304,6 +300,14 @@ void LogDockerDock::settings()
     chkTablet->setChecked(cfg.readEntry("tablet_41014", false));
     layout->addWidget(chkTablet);
 
+    QCheckBox *chkInputEater = new QCheckBox(i18n("Input Filtering"), page);
+    chkInputEater->setChecked(cfg.readEntry("input_eater_41019", false));
+    layout->addWidget(chkInputEater);
+
+    QCheckBox *chkInputMatcher = new QCheckBox(i18n("Input Matching"), page);
+    chkInputMatcher->setChecked(cfg.readEntry("input_matcher_41020", false));
+    layout->addWidget(chkInputMatcher);
+
     QCheckBox *chkOpenGL = new QCheckBox(i18n("GPU Canvas"), page);
     chkOpenGL->setChecked(cfg.readEntry("opengl_41015", false));
     layout->addWidget(chkOpenGL);
@@ -311,6 +315,10 @@ void LogDockerDock::settings()
     QCheckBox *chkMetaData = new QCheckBox(i18n("Metadata"), page);
     chkMetaData->setChecked(cfg.readEntry("metadata_41016", false));
     layout->addWidget(chkMetaData);
+
+    QCheckBox *chkPerformance = new QCheckBox(i18n("Performance"), page);
+    chkPerformance->setChecked(cfg.readEntry("performance_41021", false));
+    layout->addWidget(chkPerformance);
 
     QCheckBox *chkPigment = new QCheckBox(i18n("Color Management"), page);
     chkPigment->setChecked(cfg.readEntry("pigment", false));
@@ -332,11 +340,13 @@ void LogDockerDock::settings()
         cfg.writeEntry("math_41009", chkMath->isChecked());
         cfg.writeEntry("render_41010", chkRender->isChecked());
         cfg.writeEntry("script_41011", chkScript->isChecked());
-        cfg.writeEntry("input_41012", chkInput->isChecked());
         cfg.writeEntry("action_41013", chkAction->isChecked());
         cfg.writeEntry("tablet_41014", chkTablet->isChecked());
+        cfg.writeEntry("input_eater_41019", chkInputEater->isChecked());
+        cfg.writeEntry("input_matcher_41020", chkInputMatcher->isChecked());
         cfg.writeEntry("opengl_41015", chkOpenGL->isChecked());
         cfg.writeEntry("metadata_41016", chkMetaData->isChecked());
+        cfg.writeEntry("performance_41021", chkPerformance->isChecked());
         cfg.writeEntry("pigment", chkPigment->isChecked());
 
         if (bnToggle->isChecked()) {
@@ -384,11 +394,13 @@ void LogDockerDock::applyCategories()
     filters << cfgToString("krita.math", cfg.readEntry("math_41009", false));
     filters << cfgToString("krita.grender", cfg.readEntry("render_41010", false));
     filters << cfgToString("krita.scripting", cfg.readEntry("script_41011", false));
-    filters << cfgToString("krita.input", cfg.readEntry("input_41012", false));
     filters << cfgToString("krita.action", cfg.readEntry("action_41013", false));
     filters << cfgToString("krita.tablet", cfg.readEntry("tablet_41014", false));
+    filters << cfgToString("krita.input.eater", cfg.readEntry("input_eater_41019", false));
+    filters << cfgToString("krita.input.matcher", cfg.readEntry("input_matcher_41020", false));
     filters << cfgToString("krita.opengl", cfg.readEntry("opengl_41015", false));
     filters << cfgToString("krita.metadata", cfg.readEntry("metadata_41016", false));
+    filters << cfgToString("krita.performance", cfg.readEntry("performance_41021", false));
 
     filters << cfgToString("krita.lib.pigment", cfg.readEntry("pigment", false));
 

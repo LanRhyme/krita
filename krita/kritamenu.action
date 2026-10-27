@@ -209,7 +209,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="file_documentinfo">
-      <icon>configure</icon>
+      <icon>document-information</icon>
       <text>&amp;Document Information</text>
       <whatsThis></whatsThis>
       <toolTip>Document Information</toolTip>
@@ -221,7 +221,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="file_close_all">
-      <icon></icon>
+      <icon>close-all-tabs</icon>
       <text>&amp;Close All</text>
       <whatsThis></whatsThis>
       <toolTip>Close All</toolTip>
@@ -233,7 +233,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="file_close">
-      <icon></icon>
+      <icon>close-tab</icon>
       <text>C&amp;lose</text>
       <whatsThis></whatsThis>
       <toolTip>Close</toolTip>
@@ -297,7 +297,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="edit_copy">
-      <icon>edit-copy</icon>
+      <icon>edit-copy-16</icon>
       <text>&amp;Copy</text>
       <whatsThis></whatsThis>
       <toolTip>Copy selection to clipboard</toolTip>
@@ -357,7 +357,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="edit_paste">
-      <icon>edit-paste</icon>
+      <icon>edit-paste-16</icon>
       <text>&amp;Paste</text>
       <whatsThis></whatsThis>
       <toolTip>Paste clipboard content</toolTip>
@@ -660,7 +660,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="wrap_around_hv_axis">
-      <icon>wraparound</icon>
+      <icon>wrap-both</icon>
       <text>Wrap Around Both Directions</text>
       <whatsThis></whatsThis>
       <toolTip>Wrap Around Both Directions</toolTip>
@@ -672,7 +672,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="wrap_around_h_axis">
-      <icon>wraparound</icon>
+      <icon>wrap-horizontally</icon>
       <text>Wrap Around Horizontally</text>
       <whatsThis></whatsThis>
       <toolTip>Wrap Around Horizontally</toolTip>
@@ -684,7 +684,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="wrap_around_v_axis">
-      <icon>wraparound</icon>
+      <icon>wrap-vertically</icon>
       <text>Wrap Around Vertically</text>
       <whatsThis></whatsThis>
       <toolTip>Wrap Around Vertically</toolTip>
@@ -1401,7 +1401,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="reselect">
-      <icon></icon>
+      <icon>reselect</icon>
       <text>&amp;Reselect</text>
       <whatsThis></whatsThis>
       <toolTip>Reselect</toolTip>
@@ -1437,7 +1437,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="edit_selection">
-      <icon></icon>
+      <icon>edit_selection</icon>
       <text>Edit Selection</text>
       <whatsThis></whatsThis>
       <toolTip>Edit Selection</toolTip>
@@ -1461,7 +1461,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="featherselection">
-      <icon></icon>
+      <icon>feather_select</icon>
       <text>&amp;Feather Selection...</text>
       <whatsThis></whatsThis>
       <toolTip>Feather Selection</toolTip>
@@ -1473,7 +1473,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="toggle_display_selection">
-      <icon></icon>
+      <icon>show_selection</icon>
       <text>Dis&amp;play Selection</text>
       <whatsThis></whatsThis>
       <toolTip>Display Selection</toolTip>
@@ -1557,7 +1557,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="growselection">
-      <icon></icon>
+      <icon>grow_selection</icon>
       <text>&amp;Grow Selection...</text>
       <whatsThis></whatsThis>
       <toolTip>Grow Selection</toolTip>
@@ -1569,7 +1569,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="shrinkselection">
-      <icon></icon>
+      <icon>shrink_selection</icon>
       <text>S&amp;hrink Selection...</text>
       <whatsThis></whatsThis>
       <toolTip>Shrink Selection</toolTip>
@@ -1581,7 +1581,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="borderselection">
-      <icon></icon>
+      <icon>border_selection</icon>
       <text>&amp;Border Selection...</text>
       <whatsThis></whatsThis>
       <toolTip>Border Selection</toolTip>
@@ -2023,7 +2023,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="brushslider1">
-      <icon></icon>
+      <icon>brush-option-slider-1</icon>
       <text>Brush option slider 1</text>
       <whatsThis></whatsThis>
       <toolTip>Brush option slider 1</toolTip>
@@ -2033,7 +2033,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="brushslider2">
-      <icon></icon>
+      <icon>brush-option-slider-2</icon>
       <text>Brush option slider 2</text>
       <whatsThis></whatsThis>
       <toolTip>Brush option slider 2</toolTip>
@@ -2043,7 +2043,7 @@
       <statusTip></statusTip>
     </Action>
     <Action name="brushslider3">
-      <icon></icon>
+      <icon>brush-option-slider-3</icon>
       <text>Brush option slider 3</text>
       <whatsThis></whatsThis>
       <toolTip>Brush option slider 3</toolTip>
@@ -2053,7 +2053,7 @@
       <statusTip></statusTip>
     </Action>
 	<Action name="brushslider4">
-      <icon></icon>
+      <icon>brush-option-slider-4</icon>
       <text>Brush option slider 4</text>
       <whatsThis></whatsThis>
       <toolTip>Brush option slider 4</toolTip>
@@ -2063,7 +2063,7 @@
       <statusTip></statusTip>
     </Action>
 	<Action name="brushslider5">
-      <icon></icon>
+      <icon>brush-option-slider-5</icon>
       <text>Brush option slider 5</text>
       <whatsThis></whatsThis>
       <toolTip>Brush option slider 5</toolTip>

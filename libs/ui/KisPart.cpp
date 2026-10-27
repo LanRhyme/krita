@@ -65,7 +65,6 @@
 #include "kis_idle_watcher.h"
 #include "kis_image.h"
 #include "KisTranslateLayerNamesVisitor.h"
-#include "kis_color_manager.h"
 
 #include <KisCursorOverrideLock.h>
 #include "kis_action.h"
@@ -150,7 +149,6 @@ KisPart::KisPart()
     // Preload all the resources in the background
     Q_UNUSED(KoResourceServerProvider::instance());
     Q_UNUSED(KisResourceServerProvider::instance());
-    Q_UNUSED(KisColorManager::instance());
 
     connect(this, SIGNAL(documentOpened(QString)),
             this, SLOT(updateIdleWatcherConnections()));
@@ -702,7 +700,7 @@ void KisPart::setPlaybackEngine(KisPlaybackEngine *p_playbackEngine)
 
     // Log all changes to playback engine for easier debugging.
     // (See `krita.log` or `Help > Show Krita log for bug reports`.)
-    KisUsageLogger::log("Audio Playback Engine: " + QString(p_playbackEngine->metaObject()->className()));
+    KisUsageLogger::log("Animation Playback Engine: " + QString(p_playbackEngine->metaObject()->className()));
 
     Q_EMIT playbackEngineChanged(p_playbackEngine);
 }

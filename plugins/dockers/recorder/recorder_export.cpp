@@ -5,6 +5,7 @@
  */
 
 #include "recorder_export.h"
+#include "recorder_export_preprocessor.h"
 #include "ui_recorder_export.h"
 #include "recorder_export_config.h"
 #include "recorder_export_settings.h"
@@ -67,6 +68,7 @@ public:
     QScopedPointer<Ui::RecorderExport> ui;
     RecorderExportSettings *settings;
 
+    QScopedPointer<RecorderExportPreprocessor> preprocessor;
     QScopedPointer<Exporter> exporter;
     RecorderDirectoryCleaner *cleaner = nullptr;
 
@@ -79,6 +81,7 @@ public:
         : q(q_ptr)
         , ui(new Ui::RecorderExport)
         , settings(q_ptr->settings)
+        , preprocessor(new RecorderExportPreprocessor(settings->inputDirectory, settings->format))
     {
     }
 
@@ -284,6 +287,10 @@ public:
         Q_ASSERT(exporter == nullptr);
 
 #ifndef Q_OS_ANDROID
+        // The android export system is robust enough to not need this
+        preprocessor->updateSettings(settings->inputDirectory, settings->format);
+        preprocessor->doPreprocessing();
+
         // We don't do this again on Android, it's mind-bogglingly slow.
         updateFrameInfo();
 #endif
@@ -298,13 +305,16 @@ public:
         KisMediaEncoderWrapperSettings exporterSettings = {
             settings->videoFilePath,
             settings->inputFilePaths,
+            QString(),
             KisMediaEncoderWrapper::getFormatByKey(settings->selectedFormat),
             settings->formatPreferences.value(settings->selectedFormat).toMap(),
+            QString(),
             settings->resize ? settings->size : settings->imageSize,
             settings->inputFps,
             settings->fps,
             settings->firstFrameSec,
             settings->lastFrameSec,
+            0,
         };
 #else
         const RecorderProfile &profile = settings->profiles[settings->profileIndex];
@@ -521,14 +531,10 @@ RecorderExport::RecorderExport(RecorderExportSettings *s, QWidget *parent)
     connect(d->ui->buttonBrowseExport, SIGNAL(clicked()), SLOT(onButtonBrowseExportClicked()));
     connect(d->ui->editVideoFilePath, SIGNAL(textChanged(QString)), SLOT(onEditVideoPathChanged(QString)));
     connect(d->ui->buttonShowInFolder, SIGNAL(clicked()), SLOT(onButtonShowInFolderClicked()));
-#endif
-
-    if (settings->realTimeCaptureMode)
-        d->ui->buttonBox->button(QDialogButtonBox::Close)->setText("OK");
-    d->ui->buttonBox->button(QDialogButtonBox::Save)->setText(i18n("Export"));
-#ifndef Q_OS_ANDROID
     d->ui->editVideoFilePath->installEventFilter(this);
 #endif
+
+    d->ui->buttonBox->button(QDialogButtonBox::Save)->setText(i18n("Export"));
 }
 
 RecorderExport::~RecorderExport()
@@ -551,7 +557,7 @@ void RecorderExport::setup()
                                         .arg(settings->imageSize.height())
                                         .arg(i18nc("Pixel dimension suffix", "px"))
                                         .arg(settings->framesCount)
-                                        .arg(i18nc("The suffix after number of frames", "frame(s)"))
+                                        .arg(i18ncp("The suffix after number of frames", "frame", "frames", settings->framesCount))
                                        );
     }
 

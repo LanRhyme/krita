@@ -14,6 +14,11 @@ class KisLiquifyTransformWorkerTest : public QObject
     Q_OBJECT
 private Q_SLOTS:
     void testPoints();
+    void testRestoreShapePreservesSimilarity();
+    void testRestoreShapeRestoresRotationAndScale();
+    void testRestoreShapeRestoresScalePreservingRotation();
+    void testRestoreShapePreservesCentroid();
+    void testRestoreShapeCanPreserveStretch();
     void testPointsQImage();
     void testIdentityTransform();
 

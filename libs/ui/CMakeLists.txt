@@ -52,7 +52,6 @@ set(kritaui_LIB_SRCS
     canvas/KisCanvasState.cpp
 
     dialogs/kis_about_application.cpp
-    dialogs/kis_dlg_adj_layer_props.cc
     dialogs/kis_dlg_adjustment_layer.cc
     dialogs/kis_dlg_filter.cpp
     dialogs/kis_dlg_generator_layer.cpp
@@ -74,7 +73,7 @@ set(kritaui_LIB_SRCS
     dialogs/KisRecoverNamedAutosaveDialog.cpp
     dialogs/KisDlgSavePreset.cpp
     dialogs/kis_dlg_missing_color_profile.cpp
-    dialogs/kis_dlg_hlg_import.cpp
+
     dialogs/KisDlgConfigureCumulativeUndo.cpp
     dialogs/KisCumulativeUndoModel.cpp
     dialogs/KisColorSpaceConversionDialog.cpp
@@ -143,6 +142,7 @@ set(kritaui_LIB_SRCS
     KisLayerThumbnailCache.cpp
     kis_painting_assistant.cc
     kis_painting_assistants_decoration.cpp
+    kis_temporary_paint_constraint.cpp
     kis_selection_actions_panel.cpp
     kis_selection_actions_panel_handle.cpp
     kis_selection_actions_panel_button.cpp
@@ -334,6 +334,7 @@ set(kritaui_LIB_SRCS
     dialogs/KisDlgPaletteEditor.cpp
 
     widgets/KisNewsWidget.cpp
+    widgets/KisNewsItem.cpp
     widgets/KisGamutMaskToolbar.cpp
 	widgets/KisColorSamplerPreviewPreview.cpp
 
@@ -344,12 +345,17 @@ set(kritaui_LIB_SRCS
     utils/KisRecentDocumentsModelWrapper.cpp
     utils/KisRecentFileIconCache.cpp
 
+    input/KisCanvasNavigationActionStrategy.cpp
+    input/KisCanvasNavigationActionStrategyNativeGesture.cpp
+    input/KisCanvasNavigationActionStrategyTouch.cpp
+    input/KisInputEventsEater.cpp
     input/kis_input_manager.cpp
     input/kis_input_manager_p.cpp
     input/kis_extended_modifiers_mapper.cpp
     input/KisExtendedModifiersMapperPluginInterface.cpp
     input/kis_abstract_input_action.cpp
     input/kis_tool_invocation_action.cpp
+    input/kis_temporary_straight_ruler_action.cpp
     input/kis_pan_action.cpp
     input/kis_alternate_invocation_action.cpp
     input/kis_rotate_canvas_action.cpp
@@ -364,11 +370,13 @@ set(kritaui_LIB_SRCS
     input/kis_stroke_shortcut.cpp
     input/kis_shortcut_matcher.cpp
     input/kis_select_layer_action.cpp
+    input/KisTouchpadScrollShortcut.cpp
     input/KisQtWidgetsTweaker.cpp
     input/KisInputActionGroup.cpp
     input/kis_zoom_and_rotate_action.cpp
     input/KisCanvasOnlyAction.cpp
     input/KisTouchGestureAction.cpp
+    input/KisTouchHoldEventsPostponer.cpp
     input/KisInputProfileMigrator.cpp
 
     operations/kis_operation.cpp
@@ -386,7 +394,6 @@ set(kritaui_LIB_SRCS
     animation/KisAnimationRender.cpp
     animation/KisDlgAnimationRenderer.cpp
     animation/VideoExportOptionsDialog.cpp
-    animation/VideoHDRMetadataOptionsDialog.cpp
     animation/KisHDRMetadataOptions.cpp
     animation/KisDlgImportVideoAnimation.cpp
     animation/KisFrameDisplayProxy.cpp
@@ -411,6 +418,7 @@ set(kritaui_LIB_SRCS
     input/config/kis_wheel_input_editor.cpp
     input/config/kis_key_input_editor.cpp
     input/config/KisGestureSelector.cpp
+    input/config/KisNativeGestureSelector.cpp
     processing/fill_processing_visitor.cpp
     processing/KisEncloseAndFillProcessingVisitor.cpp
     canvas/kis_mirror_axis.cpp
@@ -625,6 +633,7 @@ ki18n_wrap_ui(kritaui_LIB_SRCS
     forms/KisWelcomePage.ui
     forms/WdgDlgPaletteEditor.ui
     forms/KisNewsPage.ui
+    forms/KisNewsItem.ui
     forms/wdgGamutMaskToolbar.ui
     forms/wdgchangeclonesource.ui
     forms/koDocumentInfoAboutWidget.ui
@@ -637,7 +646,6 @@ ki18n_wrap_ui(kritaui_LIB_SRCS
 
     widgets/KisDlgListPicker.ui
     dialogs/kis_delayed_save_dialog.ui
-    dialogs/kis_dlg_hlg_import.ui
     dialogs/KisRecoverNamedAutosaveDialog.ui
     input/config/kis_input_configuration_page.ui
     input/config/kis_edit_profiles_dialog.ui
@@ -661,12 +669,10 @@ ki18n_wrap_ui(kritaui_LIB_SRCS
     layerstyles/wdgTexture.ui
     layerstyles/wdgKisLayerStyleAngleSelector.ui
 
-    wdgsplash.ui
     input/wintab/drawpile_tablettester/tablettest.ui
 
     animation/wdg_animationrenderer.ui
     animation/video_export_options_dialog.ui
-    animation/VideoHDRMetadataOptionsDialog.ui
     animation/VideoImportDialog.ui
 
     imagesize/wdg_imagesize.ui
@@ -721,7 +727,6 @@ target_link_libraries(kritaui
 
         kritaversion
         kritaimpex
-        kritacolor
         kritaimage
         kritalibbrush
         kritawidgets
@@ -771,12 +776,25 @@ if (HAVE_X11)
 endif()
 
 if (QT_MAJOR_VERSION STREQUAL "6")
+    #Need provate headers to access platform stuff for proper screen color sampling
+    set_source_files_properties(
+      widgets/KisScreenColorSampler.cpp
+      PROPERTIES
+      INCLUDE_DIRECTORIES "${Qt${QT_MAJOR_VERSION}Gui_PRIVATE_INCLUDE_DIRS}"
+    )
+
     target_link_libraries(kritaui
         PRIVATE
             Qt6::OpenGLWidgets
             Qt6::SvgWidgets
             KF6::ColorScheme
     )
+
+    set_source_files_properties(
+        input/kis_shortcut_matcher.cpp
+        PROPERTIES
+        INCLUDE_DIRECTORIES "${Qt${QT_MAJOR_VERSION}Gui_PRIVATE_INCLUDE_DIRS}"
+        )
 endif()
 
 if (Mlt7_FOUND)

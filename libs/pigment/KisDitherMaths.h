@@ -150,20 +150,55 @@ inline float dither_factor_blue_noise_64(int x, int y)
     return m * (1.f / 4096.f) + (1.f / 8192.f);
 }
 
-inline float dither_factor_bayer_8(int x, int y)
+/*
+ * Compute Bayer dithering matrices
+ *
+ * Bayer(n, x, y) = reverse(interleave(xor(x mod n, y mod n), x mod n))
+ * 
+ * where
+ * 
+ *     n      -   order of square Bayer matrix (n x n)
+ *     x, y   -   matrix coordinates
+ */
+
+inline float dither_factor_bayer_2_normalized(int x, int y)
 {
     y ^= x;
 
-    /* Compute reverse(interleave(xor(x mod n, y mod n), x mod n))
-     * Here n = 8 and `mod n` is the bottom 3 bits.
-     */
+    // Here n = 2 and `mod n` is the bottom bit.
+    uint32_t m = ((y & 0x1) << 1) | (x & 0x1);
+
+    // m is in range [0, 3].  We scale it to [0, 3.0f/4.0f].
+    return static_cast<float>(m) * (1.f / 4.f);
+}
+
+inline float dither_factor_bayer_4_normalized(int x, int y)
+{
+    y ^= x;
+
+    // Here n = 4 and `mod n` is the bottom 2 bits.
+    uint32_t m = ((y & 0x1) << 3) | ((x & 0x1) << 2) | (y & 0x2) | ((x & 0x2) >> 1);
+
+    // m is in range [0, 15].  We scale it to [0, 15.0f/16.0f].
+    return static_cast<float>(m) * (1.f / 16.f);
+}
+
+inline float dither_factor_bayer_8_normalized(int x, int y)
+{
+    y ^= x;
+
+    // Here n = 8 and `mod n` is the bottom 3 bits.
     uint32_t m = ((y & 0x1) << 5) | ((x & 0x1) << 4) | ((y & 0x2) << 2) | ((x & 0x2) << 1) | ((y & 0x4) >> 1) | ((x & 0x4) >> 2);
 
-    /* m is in range [0, 63].  We scale it to [0, 63.0f/64.0f], then
-     * shift it to to [1.0f/128.0f, 127.0f/128.0f] so that 0 < d < 1.
-     * This ensures exact values are not changed by dithering.
-     */
-    return static_cast<float>(m) * (1.f / 64.f) + (1.f / 128.f);
+    // m is in range [0, 63].  We scale it to [0, 63.0f/64.0f].
+    return static_cast<float>(m) * (1.f / 64.f);
+}
+
+inline float dither_factor_bayer_8(int x, int y)
+{
+    // Shift normalized matrix value to [1.0f/128.0f, 127.0f/128.0f] so that 0 < d < 1.
+    // This ensures exact values are not changed by dithering.
+    return dither_factor_bayer_8_normalized(x, y) + (1.f / 128.f);
 }
 
 inline float apply_dither(float f, float d, float s)

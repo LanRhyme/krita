@@ -52,7 +52,7 @@ void KisGradientGenerator::generate(KisProcessingInformation dst,
         generatorConfiguration->antiAliasThreshold(),
         generatorConfiguration->reverse(),
         QRect(dst.topLeft(), size),
-        generatorConfiguration->dither()
+        generatorConfiguration->dither() ? KisGradientPainter::DitherBlueNoise : KisGradientPainter::DitherNone
     );
 }
 

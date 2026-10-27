@@ -81,6 +81,7 @@
 #include "kis_spin_box_unit_manager.h"
 #include "kis_document_aware_spin_box_unit_manager.h"
 #include "KisViewManager.h"
+#include <KisScopedPerformanceLogger.h>
 #include <KisUsageLogger.h>
 
 #include <dialogs/KisSessionManagerDialog.h>
@@ -248,13 +249,9 @@ KisApplication::KisApplication(const QString &key, int &argc, char **argv)
     QString defaultStyle = style()->objectName().toLower();
     if (!widgetStyleFromConfig.isEmpty()) {
         qApp->setStyle(widgetStyleFromConfig);
-#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
-    } else if (defaultStyle == "macintosh" || defaultStyle == "windowsvista") {
-         // default to Fusion instead of styles that use native theming
-        qApp->setStyle("fusion");
     }
-#else
-    } else if (style()->objectName().toLower() == "macos" || defaultStyle == "windowsvista") {
+#if defined Q_OS_WIN || defined Q_OS_MACOS || defined Q_OS_ANDROID
+    else {
         // default to Fusion instead of styles that use native theming
         qApp->setStyle("fusion");
     }
@@ -350,6 +347,8 @@ void KisApplication::initializeGlobals(const KisApplicationArguments &args)
 
 void KisApplication::addResourceTypes()
 {
+    KisScopedPerformanceLogger perfLog(QStringLiteral("KisApplication::addResourceTypes"));
+
     // All Krita's resource types
     KoResourcePaths::addAssetType("markers", "data", "/styles/");
     KoResourcePaths::addAssetType("kis_pics", "data", "/pics/");
@@ -397,6 +396,8 @@ bool KisApplication::event(QEvent *event)
 
 bool KisApplication::registerResources()
 {
+    KisScopedPerformanceLogger perfLog(QStringLiteral("KisApplication::registerResources"));
+
     KisResourceLoaderRegistry *reg = KisResourceLoaderRegistry::instance();
 
     reg->add(new KisResourceLoader<KisPaintOpPreset>(ResourceSubType::KritaPaintOpPresets, ResourceType::PaintOpPresets, i18n("Brush presets"),
@@ -464,7 +465,7 @@ bool KisApplication::registerResources()
 
 void KisApplication::loadPlugins()
 {
-    //    qDebug() << "loadPlugins();";
+    KisScopedPerformanceLogger perfLog(QStringLiteral("KisApplication::loadPlugins"));
 
     KoShapeRegistry* r = KoShapeRegistry::instance();
     r->add(new KisShapeSelectionFactory());
@@ -480,11 +481,19 @@ void KisApplication::loadPlugins()
 
 bool KisApplication::start(const KisApplicationArguments &args)
 {
+    KisScopedPerformanceLogger perfLog(QStringLiteral("KisApplication::start"));
 #ifdef Q_OS_ANDROID
     KisAndroidDonations::showDonationDialog(true);
 #endif
 
     KisConfig cfg(false);
+
+    auto iconsInMenuMode = cfg.iconsInMenu();
+    if (iconsInMenuMode == KisConfig::IIM_Yes) {
+        QCoreApplication::setAttribute(Qt::AA_DontShowIconsInMenus, false);
+    } else if (iconsInMenuMode == KisConfig::IIM_No) {
+        QCoreApplication::setAttribute(Qt::AA_DontShowIconsInMenus, true);
+    }
 
 #if defined(Q_OS_WIN)
 #ifdef ENV32BIT
@@ -828,13 +837,6 @@ bool KisApplication::start(const KisApplicationArguments &args)
                                 i18n("Cannot add the file layer: no document is open.\n"
                                      "You can either create a new file using the --new-image option, or you can open an existing file."));
         }
-    }
-
-    // fixes BUG:369308  - Krita crashing on splash screen when loading.
-    // trying to open a file before Krita has loaded can cause it to hang and crash
-    if (d->splashScreen) {
-        d->splashScreen->displayLinks(true);
-        d->splashScreen->displayRecentFiles(true);
     }
 
     Q_FOREACH(const QByteArray &message, d->earlyRemoteArguments) {

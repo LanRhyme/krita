@@ -158,6 +158,33 @@ void testPoints(KisLiquifyTransformWorkerBenchmark::Operation operation, bool us
                 worker.undoPoints(undoBases[i], flows[i%flows.length()], sigmas[i%sigmas.length()]);
             }
         }
+    } else if (operation == KisLiquifyTransformWorkerBenchmark::RestoreShape ||
+               operation == KisLiquifyTransformWorkerBenchmark::RestoreShapeWithStretch) {
+
+        for (int i = 0; i < bases.count(); i++) {
+            worker.translatePoints(bases[i], QPointF(50, 0), sigmas[i%sigmas.length()], useWashMode, flows[i%flows.length()]);
+        }
+
+        for (int i = 0; i < bases.count(); i++) {
+            worker.rotatePoints(bases[i], M_PI / 4, sigmas[i%sigmas.length()], useWashMode, flows[i%flows.length()]);
+        }
+
+        QList<QPointF> restoreShapeBases = preparePointsData((A + D)/2, (C+B)/2, (B+D)/2, (A+C)/2, oneWayBasesCount);
+
+        QBENCHMARK {
+
+            for (int i = 0; i < restoreShapeBases.count(); i++) {
+                const bool preserveStretch =
+                    operation == KisLiquifyTransformWorkerBenchmark::RestoreShapeWithStretch;
+
+                worker.restoreShapePoints(restoreShapeBases[i],
+                                          flows[i%flows.length()],
+                                          sigmas[i%sigmas.length()],
+                                          true,
+                                          true,
+                                          preserveStretch);
+            }
+        }
     } else if (operation == KisLiquifyTransformWorkerBenchmark::RunOnQImage) {
         for (int i = 0; i < bases.count(); i++) {
             worker.translatePoints(bases[i], QPointF(50, 0), sigmas[i%sigmas.length()], useWashMode, flows[i%flows.length()]);
@@ -289,6 +316,26 @@ void KisLiquifyTransformWorkerBenchmark::testPointsUndoBuildUp()
 void KisLiquifyTransformWorkerBenchmark::testPointsUndoWash()
 {
     testPoints(Undo, true);
+}
+
+void KisLiquifyTransformWorkerBenchmark::testPointsRestoreShapeBuildUp()
+{
+    testPoints(RestoreShape, false);
+}
+
+void KisLiquifyTransformWorkerBenchmark::testPointsRestoreShapeWash()
+{
+    testPoints(RestoreShape, true);
+}
+
+void KisLiquifyTransformWorkerBenchmark::testPointsRestoreShapeWithStretchBuildUp()
+{
+    testPoints(RestoreShapeWithStretch, false);
+}
+
+void KisLiquifyTransformWorkerBenchmark::testPointsRestoreShapeWithStretchWash()
+{
+    testPoints(RestoreShapeWithStretch, true);
 }
 
 void KisLiquifyTransformWorkerBenchmark::testRunOnDev()

@@ -507,7 +507,11 @@ void flattenNodes(KisNodeSP node, QList<FlattenedNode> &nodes)
             {
                 FlattenedNode item;
                 item.node = child;
-                item.type = FlattenedNode::FOLDER_OPEN;
+                if (child->collapsed()) {
+                    item.type = FlattenedNode::FOLDER_CLOSED;
+                } else {
+                    item.type = FlattenedNode::FOLDER_OPEN;
+                }
                 nodes << item;
             }
         } else if (shapeLayer) {
@@ -668,6 +672,7 @@ void PSDLayerMaskSection::writePsdImpl(QIODevice &io, KisNodeSP rootLayer, psd_c
                 QRect maskRect = onlyTransparencyMask ? onlyTransparencyMask->paintDevice()->exactBounds() : QRect();
 
                 const bool nodeVisible = node->visible();
+                const bool nodeLocked = node->userLocked();
                 const KoColorSpace *colorSpace = node->colorSpace();
                 const quint8 nodeOpacity = node->opacity();
                 const KisLayer *layerObj = qobject_cast<const KisLayer *>(node.data());
@@ -964,6 +969,7 @@ void PSDLayerMaskSection::writePsdImpl(QIODevice &io, KisNodeSP rootLayer, psd_c
                 layerRecord->transparencyProtected = alphaLocked;
                 layerRecord->visible = nodeVisible;
                 layerRecord->irrelevant = nodeIrrelevant;
+                layerRecord->userLocked = nodeLocked;
 
                 layerRecord->layerName = nodeName.isEmpty() ? i18n("Unnamed Layer") : nodeName;
 

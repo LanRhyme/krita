@@ -7,6 +7,8 @@
 #include <QScopedPointer>
 #include <QUuid>
 
+#include <iterator>
+
 #include <KoColorSpace.h>
 #include <KoColorSpaceRegistry.h>
 #include <KoColorTransformation.h>
@@ -71,6 +73,7 @@
 #include "KisMainWindow.h"
 #include "kis_canvas2.h"
 #include "KoCanvasResourceProvider.h"
+#include <brushengine/kis_paint_information.h>
 #include <brushengine/kis_paintop_preset.h>
 
 
@@ -879,6 +882,44 @@ void Node::paintLine(const QPointF pointOne, const QPointF pointTwo, double pres
 
     KisFigurePaintingToolHelper helper = PaintingResources::createHelper(d->image, node(), strokeStyle);
     helper.paintLine(pointOneInfo, pointTwoInfo);
+}
+
+void Node::paintPolylineStroke(const QList<StrokePoint> &points, const QString strokeStyle)
+{
+    if (paintAbility() != "PAINT") {
+        dbgScript << "Script attempted to use Node::paintPolylineStroke() on an unpaintable node, ignoring.";
+        return;
+    }
+
+    if (points.isEmpty()) {
+        return;
+    }
+
+    auto paintInformation = [] (const StrokePoint &point) {
+        return KisPaintInformation(point.position(),
+                                   point.pressure(),
+                                   point.xTilt(),
+                                   point.yTilt(),
+                                   point.rotation(),
+                                   point.tangentialPressure(),
+                                   1.0,
+                                   point.time(),
+                                   point.speed());
+    };
+
+    KisFigurePaintingToolHelper helper = PaintingResources::createHelper(d->image, node(), strokeStyle);
+
+    KisPaintInformation previous = paintInformation(points.first());
+    if (points.size() == 1) {
+        helper.paintLine(previous, previous);
+        return;
+    }
+
+    for (auto it = std::next(points.cbegin()); it != points.cend(); ++it) {
+        KisPaintInformation current = paintInformation(*it);
+        helper.paintLine(previous, current);
+        previous = current;
+    }
 }
 
 

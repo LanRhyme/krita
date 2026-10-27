@@ -15,7 +15,7 @@
 
 [General]
 name=Tablet Pro (for use with the Tablet Pro application on Windows)
-version=5
+version=7
 
 [Pan Canvas]
 0={4;1;[];0;0;0}
@@ -47,12 +47,15 @@ version=5
 0={1;1;[1000012];0;0;0}
 1={0;1;[1000014];0;0;0}
 
+[Temporary Straight Ruler]
+0={0;2;[56];1;0;0}
+1={1;2;[1000020,56];1;0;0}
+
 [Tool Invocation]
 0={2;1;[1000000];0;0;0}
 1={1;1;[1000004];0;0;0}
 2={0;2;[];1;0;0}
 3={1;1;[1000005];0;0;0}
-4={3;2;[56];1;0;0}
 
 [Zoom Canvas]
 0={0;4;[];0;0;1}
@@ -68,6 +71,10 @@ version=5
 7={0;2;[1000021,20];1;0;0}
 8={3;1;[2d];0;0;0}
 9={2;1;[3d];0;0;0}
+
+[Zoom and Rotate Canvas]
+0={0;4;[];0;0;7}
+1={0;5;[];0;0;1}
 
 [Toggle Canvas Only]
 0={0;4;[];0;0;6}

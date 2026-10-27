@@ -1,5 +1,6 @@
 /* This file is part of the KDE project
  * SPDX-FileCopyrightText: 2012 Arjen Hiemstra <ahiemstra@heimr.nl>
+ * SPDX-FileCopyrightText: 2026 Ayanami Kaine <personal@ayanamikaine.com>
  *
  *  SPDX-License-Identifier: GPL-2.0-or-later
  */
@@ -51,6 +52,13 @@ void KisAbstractInputAction::activate(int shortcut)
 void KisAbstractInputAction::deactivate(int shortcut)
 {
     Q_UNUSED(shortcut);
+}
+
+bool KisAbstractInputAction::trySwitchShortcut(int oldShortcut, int newShortcut)
+{
+    Q_UNUSED(oldShortcut);
+    Q_UNUSED(newShortcut);
+    return false;
 }
 
 void KisAbstractInputAction::begin(int shortcut, QEvent *event)
@@ -207,7 +215,7 @@ QPoint KisAbstractInputAction::eventPos(const QEvent *event)
     }
 
     default:
-        warnInput << "KisAbstractInputAction" << d->name << "tried to process event data from an unhandled event type" << event->type();
+        warnUI << "KisAbstractInputAction" << d->name << "tried to process event data from an unhandled event type" << event->type();
         return QPoint();
     }
 }
@@ -255,7 +263,7 @@ QPointF KisAbstractInputAction::eventPosF(const QEvent *event) {
 #endif
     }
     default:
-        warnInput << "KisAbstractInputAction" << d->name << "tried to process event data from an unhandled event type" << event->type();
+        warnUI << "KisAbstractInputAction" << d->name << "tried to process event data from an unhandled event type" << event->type();
         return QPointF();
     }
 }

@@ -29,6 +29,7 @@
 %Include View.sip
 %Include Window.sip
 %Include Krita.sip
+%Include StrokePoint.sip
 %Include Node.sip
 
 %Include GroupLayer.sip

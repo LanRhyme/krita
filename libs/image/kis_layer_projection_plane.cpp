@@ -14,6 +14,8 @@
 #include "kis_projection_leaf.h"
 #include "kis_cached_paint_device.h"
 #include "kis_sequential_iterator.h"
+#include "kis_paint_layer.h"
+#include "kis_group_layer.h"
 
 
 struct KisLayerProjectionPlane::Private
@@ -43,6 +45,10 @@ void KisLayerProjectionPlane::applyImpl(KisPainter *painter, const QRect &rect, 
     KisPaintDeviceSP device = m_d->layer->projection();
     if (!device) return;
 
+    if (m_d->layer->clippingEnabled()) {
+        return;
+    }
+
     QRect needRect = rect;
 
     if (m_d->layer->compositeOpId() != COMPOSITE_COPY &&
@@ -54,7 +60,28 @@ void KisLayerProjectionPlane::applyImpl(KisPainter *painter, const QRect &rect, 
 
     if(needRect.isEmpty()) return;
 
-    const QBitArray channelFlags = m_d->layer->projectionLeaf()->channelFlags();
+    QBitArray channelFlags = m_d->layer->projectionLeaf()->channelFlags();
+    const KoColorSpace *srcCS = device->colorSpace();
+    const KoColorSpace *dstCS = painter->device()->colorSpace();
+
+    if (!channelFlags.isEmpty() && srcCS != dstCS) {
+        bool alphaFlagIsSet        = (srcCS->channelFlags(false, true) & channelFlags) == srcCS->channelFlags(false, true);
+        bool allColorFlagsAreSet   = (srcCS->channelFlags(true, false) & channelFlags) == srcCS->channelFlags(true, false);
+        bool allColorFlagsAreUnset = (srcCS->channelFlags(true, false) & channelFlags).count(true) == 0;
+
+        if (allColorFlagsAreSet) {
+            channelFlags = dstCS->channelFlags(true, alphaFlagIsSet);
+        } else if (allColorFlagsAreUnset) {
+            channelFlags = dstCS->channelFlags(false, alphaFlagIsSet);
+        } else {
+            for (quint32 i = 0; i < dstCS->channelCount(); ++i) {
+                if (dstCS->channels()[i]->channelType() == KoChannelInfo::ALPHA) {
+                    channelFlags.setBit(i, alphaFlagIsSet);
+                    break;
+                }
+            }
+        }
+    }
 
     QScopedPointer<KisCachedPaintDevice::Guard> d1;
 
@@ -68,10 +95,40 @@ void KisLayerProjectionPlane::applyImpl(KisPainter *painter, const QRect &rect, 
         device = tmp;
     }
 
-    painter->setChannelFlags(channelFlags);
-    painter->setCompositeOpId(m_d->layer->compositeOpId());
-    painter->setOpacityU8(m_d->layer->projectionLeaf()->opacity());
-    painter->bitBlt(needRect.topLeft(), device, needRect);
+    QList<KisNodeSP> clippedNodes = m_d->layer->gatherClippingLayers();
+
+    if (clippedNodes.isEmpty()) {
+        painter->setChannelFlags(channelFlags);
+        painter->setCompositeOpId(m_d->layer->compositeOpId());
+        painter->setOpacityU8(m_d->layer->projectionLeaf()->opacity());
+        painter->bitBlt(needRect.topLeft(), device, needRect);
+    } else {
+        KisPaintDeviceSP deviceClone = new KisPaintDevice(dstCS);
+        deviceClone->makeCloneFrom(device, needRect);
+
+        QBitArray newChannelFlags = deviceClone->colorSpace()->channelFlags(true, false);
+
+        KisPainter clipPainter(deviceClone);
+        clipPainter.setChannelFlags(newChannelFlags);
+
+        for (KisNodeSP node : clippedNodes) {
+            KisLayer *clipLayer = dynamic_cast<KisLayer*>(node.data());
+            if (!clipLayer || !clipLayer->visible()) continue;
+
+            KisPaintDeviceSP clipDev = clipLayer->projection();
+            if (!clipDev) continue;
+
+            clipPainter.setCompositeOpId(clipLayer->compositeOpId());
+            clipPainter.setOpacityU8(clipLayer->projectionLeaf()->opacity());
+            clipPainter.bitBlt(needRect.topLeft(), clipDev, needRect);
+        }
+        clipPainter.end();
+
+        painter->setChannelFlags(channelFlags);
+        painter->setCompositeOpId(m_d->layer->compositeOpId());
+        painter->setOpacityU8(m_d->layer->projectionLeaf()->opacity());
+        painter->bitBlt(needRect.topLeft(), deviceClone, needRect);
+    }
 }
 
 void KisLayerProjectionPlane::apply(KisPainter *painter, const QRect &rect)

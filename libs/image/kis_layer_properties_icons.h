@@ -24,6 +24,7 @@ public:
     static const KoID layerStyle;
     static const KoID inheritAlpha;
     static const KoID alphaLocked;
+    static const KoID clippingLayer;
     static const KoID onionSkins;
     static const KoID passThrough;
     static const KoID selectionActive;

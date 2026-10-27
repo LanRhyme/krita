@@ -25,6 +25,8 @@
 #include "KisFrameChangeUpdateRecipe.h"
 
 #include "kis_clone_layer.h"
+#include "kis_layer.h"
+#include "kis_group_layer.h"
 
 #include "kis_time_span.h"
 
@@ -409,6 +411,80 @@ KisNodeSP KisNode::nextSibling() const
 {
     KisNodeSP parentNode = parent();
     return parentNode ? parentNode->nextChildImpl(const_cast<KisNode*>(this)) : 0;
+}
+
+bool KisNode::isClippingPrevSibling() const
+{
+    if (KisNodeSP prev = prevSibling()) {
+        if (!prev->inherits("KisGroupLayer")) {
+            if (KisLayer *layer = qobject_cast<KisLayer*>(prev.data())) {
+                return layer->clippingEnabled();
+            }
+        }
+    }
+    return false;
+}
+
+bool KisNode::isClippingNextSibling() const
+{
+    if (KisNodeSP next = nextSibling()) {
+        if (KisLayer *layer = qobject_cast<KisLayer*>(next.data())) {
+            return layer->clippingEnabled();
+        }
+    }
+    return false;
+}
+
+QList<KisNodeSP> KisNode::gatherClippingLayers() const
+{
+    QList<KisNodeSP> clippedNodes;
+    KisNodeSP current = nextSibling();
+
+    while (current) {
+        if (current == parent()) break;
+
+        KisLayer *currentLayer = qobject_cast<KisLayer*>(current.data());
+        if (!currentLayer) break;
+
+        if (!currentLayer->clippingEnabled()) break;
+
+        KisGroupLayerSP group = qobject_cast<KisGroupLayer*>(currentLayer);
+        if (group && group->passThroughMode()) {
+            for (KisNodeSP child = group->firstChild(); child; child = child->nextSibling()) {
+                KisLayer *chLay = qobject_cast<KisLayer*>(child.data());
+                if (!chLay) break;
+                if (!child->visible()) continue;
+                if (!chLay->clippingEnabled()) break;
+                clippedNodes.append(child);
+            }
+            current = group->nextSibling();
+            continue;
+        }
+
+        if (current->visible()) {
+            clippedNodes.append(current);
+        }
+        current = current->nextSibling();
+    }
+    return clippedNodes;
+}
+
+KisNodeSP KisNode::findClippingBase() const
+{
+    const KisLayer *selfLayer = qobject_cast<const KisLayer*>(this);
+    if (!selfLayer || !selfLayer->clippingEnabled()) {
+        return nullptr;
+    }
+
+    KisNodeSP current = prevSibling();
+    while (current) {
+        KisLayer *layer = qobject_cast<KisLayer*>(current.data());
+        if (layer && !layer->clippingEnabled()) {
+            return current;
+        }
+        current = current->prevSibling();
+    }
+    return nullptr;
 }
 
 quint32 KisNode::childCount() const

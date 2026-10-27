@@ -25,6 +25,7 @@ const KoID KisLayerPropertiesIcons::visible("visible", ki18n("Visible"));
 const KoID KisLayerPropertiesIcons::layerStyle("layer-style", ki18n("Layer Style"));
 const KoID KisLayerPropertiesIcons::inheritAlpha("inherit-alpha", ki18n("Inherit Alpha"));
 const KoID KisLayerPropertiesIcons::alphaLocked("alpha-locked", ki18n("Alpha Locked"));
+const KoID KisLayerPropertiesIcons::clippingLayer("clipping-layer", ki18n("Clipping Layer"));
 const KoID KisLayerPropertiesIcons::onionSkins("onion-skins", ki18n("Onion Skins"));
 const KoID KisLayerPropertiesIcons::passThrough("pass-through", ki18n("Pass Through"));
 const KoID KisLayerPropertiesIcons::selectionActive("selection-active", ki18n("Active"));
@@ -78,6 +79,7 @@ void KisLayerPropertiesIcons::updateIcons()
     m_d->icons.insert(layerStyle.id(), IconsPair(KisIconUtils::loadIcon("layer-style-enabled"), KisIconUtils::loadIcon("layer-style-disabled")));
     m_d->icons.insert(inheritAlpha.id(), IconsPair(KisIconUtils::loadIcon("transparency-disabled"), KisIconUtils::loadIcon("transparency-enabled")));
     m_d->icons.insert(alphaLocked.id(), IconsPair(KisIconUtils::loadIcon("transparency-locked"), KisIconUtils::loadIcon("transparency-unlocked")));
+    m_d->icons.insert(clippingLayer.id(), IconsPair(KisIconUtils::loadIcon("quick_clipping"), KisIconUtils::loadIcon("quick_clipping")));
     m_d->icons.insert(onionSkins.id(), IconsPair(KisIconUtils::loadIcon("onionOn"), KisIconUtils::loadIcon("onionOff")));
     m_d->icons.insert(passThrough.id(), IconsPair(KisIconUtils::loadIcon("passthrough-enabled"), KisIconUtils::loadIcon("passthrough-disabled")));
     m_d->icons.insert(selectionActive.id(), IconsPair(KisIconUtils::loadIcon("local-selection-active"), KisIconUtils::loadIcon("local-selection-inactive")));

@@ -316,6 +316,16 @@ void FreehandStrokeStrategy::issueSetDirtySignals()
         KritaUtils::addJobSequential(jobs,
             [this, dirtyRects] () {
                 this->targetNode()->setDirty(dirtyRects);
+                if (this->targetNode()->inherits("KisMask")) {
+                    KisNodeSP parent = this->targetNode()->parent();
+                    if (parent && !parent->inherits("KisGroupLayer")) {
+                        if (KisNodeSP base = parent->findClippingBase()) {
+                            base->setDirty(dirtyRects);
+                        }
+                    }
+                } else if (KisNodeSP base = this->targetNode()->findClippingBase()) {
+                    base->setDirty(dirtyRects);
+                }
             }
         );
 
@@ -323,6 +333,16 @@ void FreehandStrokeStrategy::issueSetDirtySignals()
 
     } else {
         targetNode()->setDirty(dirtyRects);
+        if (this->targetNode()->inherits("KisMask")) {
+            KisNodeSP parent = this->targetNode()->parent();
+            if (parent && !parent->inherits("KisGroupLayer")) {
+                if (KisNodeSP base = parent->findClippingBase()) {
+                    base->setDirty(dirtyRects);
+                }
+            }
+        } else if (KisNodeSP base = this->targetNode()->findClippingBase()) {
+            base->setDirty(dirtyRects);
+        }
     }
 
     //KisUpdateTimeMonitor::instance()->reportJobFinished(data, dirtyRects);

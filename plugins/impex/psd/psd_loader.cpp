@@ -568,6 +568,9 @@ KisImportExportErrorCode PSDLoader::decode(QIODevice &io)
             }
             layer->setVisible(layerRecord->visible);
             layer->setUserLocked(layerRecord->userLocked);
+            if (layerRecord->clipping == 1) {
+                layer->enableClippingLayer(true);
+            }
             newLayer = layer;
 
         }

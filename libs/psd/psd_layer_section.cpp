@@ -675,7 +675,8 @@ void PSDLayerMaskSection::writePsdImpl(QIODevice &io, KisNodeSP rootLayer, psd_c
                 const bool nodeLocked = node->userLocked();
                 const KoColorSpace *colorSpace = node->colorSpace();
                 const quint8 nodeOpacity = node->opacity();
-                const quint8 nodeClipping = 0;
+                const KisLayer *layerObj = qobject_cast<const KisLayer *>(node.data());
+                const quint8 nodeClipping = (layerObj && layerObj->clippingEnabled()) ? 1 : 0;
                 const int nodeLabelColor = node->colorLabelIndex();
                 const KisPaintLayer *paintLayer = qobject_cast<KisPaintLayer *>(node.data());
                 const bool alphaLocked = (paintLayer && paintLayer->alphaLocked());
@@ -1064,7 +1065,8 @@ void PSDLayerMaskSection::writeTiffImpl(QIODevice &io, KisNodeSP rootLayer, psd_
                 const bool nodeVisible = node->visible();
                 const KoColorSpace *colorSpace = node->colorSpace();
                 const quint8 nodeOpacity = node->opacity();
-                const quint8 nodeClipping = 0;
+                const KisLayer *layerObj = qobject_cast<const KisLayer *>(node.data());
+                const quint8 nodeClipping = (layerObj && layerObj->clippingEnabled()) ? 1 : 0;
                 const int nodeLabelColor = node->colorLabelIndex();
                 const KisPaintLayer *paintLayer = qobject_cast<KisPaintLayer *>(node.data());
                 const bool alphaLocked = (paintLayer && paintLayer->alphaLocked());

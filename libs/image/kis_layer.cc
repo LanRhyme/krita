@@ -167,6 +167,7 @@ struct Q_DECL_HIDDEN KisLayer::Private
     QBitArray channelFlags;
     KisMetaData::Store* metaDataStore {nullptr};
     KisCloneLayersList clonesList;
+    bool clipping {false};
 
     KisPSDLayerStyleSP layerStyle;
     KisLayerStyleProjectionPlaneSP layerStyleProjectionPlane;
@@ -197,6 +198,7 @@ KisLayer::KisLayer(const KisLayer& rhs)
     if (this != &rhs) {
         m_d->metaDataStore = new KisMetaData::Store(*rhs.m_d->metaDataStore);
         m_d->channelFlags = rhs.m_d->channelFlags;
+        m_d->clipping = rhs.m_d->clipping;
 
         setName(rhs.name());
         m_d->projectionPlane = toQShared(new KisLayerProjectionPlane(this));
@@ -285,6 +287,7 @@ KisBaseNode::PropertyList KisLayer::sectionModelProperties() const
     }
 
     l << KisLayerPropertiesIcons::getProperty(KisLayerPropertiesIcons::inheritAlpha, alphaChannelDisabled());
+    l << KisLayerPropertiesIcons::getProperty(KisLayerPropertiesIcons::clippingLayer, clippingEnabled());
 
     if (colorOverlayMask()) {
         // Use an immutable property (with a string value), to hide it in the layer properties dialog.
@@ -303,6 +306,10 @@ void KisLayer::setSectionModelProperties(const KisBaseNode::PropertyList &proper
             disableAlphaChannel(property.state.toBool());
         }
 
+        if (property.id == KisLayerPropertiesIcons::clippingLayer.id()) {
+            enableClippingLayer(property.state.toBool());
+        }
+
         if (property.id == KisLayerPropertiesIcons::layerStyle.id()) {
             if (m_d->layerStyle &&
                 m_d->layerStyle->isEnabled() != property.state.toBool()) {
@@ -316,8 +323,43 @@ void KisLayer::setSectionModelProperties(const KisBaseNode::PropertyList &proper
     }
 }
 
+bool KisLayer::clippingEnabled() const
+{
+    return m_d->clipping;
+}
+
+void KisLayer::enableClippingLayer(bool enable)
+{
+    if (m_d->clipping == enable) return;
+
+    if (enable && alphaChannelDisabled()) {
+        disableAlphaChannel(false);
+    }
+
+    KisNodeSP base = findClippingBase();
+    m_d->clipping = enable;
+    if (!base) {
+        base = findClippingBase();
+    }
+
+    if (base) {
+        base->setDirty();
+    } else {
+        setDirty();
+    }
+
+    baseNodeChangedCallback();
+    baseNodeInvalidateAllFramesCallback();
+}
+
 void KisLayer::disableAlphaChannel(bool disable)
 {
+    if (alphaChannelDisabled() == disable) return;
+
+    if (disable && clippingEnabled()) {
+        enableClippingLayer(false);
+    }
+
     QBitArray newChannelFlags = m_d->channelFlags;
 
     if(newChannelFlags.isEmpty())
@@ -426,6 +468,7 @@ void KisLayer::fillMergedLayerTemplate(KisLayerSP dstLayer, KisLayerSP prevLayer
     QRect layerProjectionExtent = this->projection()->extent();
     QRect prevLayerProjectionExtent = prevLayer->projection()->extent();
     bool alphaDisabled = this->alphaChannelDisabled();
+    bool clipping = this->clippingEnabled();
     bool prevAlphaDisabled = prevLayer->alphaChannelDisabled();
 
     KisPaintDeviceSP mergedDevice = dstLayer->paintDevice();
@@ -439,6 +482,7 @@ void KisLayer::fillMergedLayerTemplate(KisLayerSP dstLayer, KisLayerSP prevLayer
         }
 
         //Copy the pixels of previous layer with their actual alpha value
+        prevLayer->enableClippingLayer(false);
         prevLayer->disableAlphaChannel(false);
 
         prevLayer->projectionPlane()->apply(&gc, prevLayerProjectionExtent | imageSP->bounds());
@@ -451,11 +495,15 @@ void KisLayer::fillMergedLayerTemplate(KisLayerSP dstLayer, KisLayerSP prevLayer
             if (alphaDisabled == prevAlphaDisabled) {
                 this->disableAlphaChannel(false);
             }
+            if (clipping) {
+                this->disableAlphaChannel(true);
+            }
 
             this->projectionPlane()->apply(&gc, layerProjectionExtent | imageSP->bounds());
 
             //Restore the layer disableAlpha status for correct undo/redo
             this->disableAlphaChannel(alphaDisabled);
+            this->enableClippingLayer(clipping);
         }
     }
     else {
@@ -466,6 +514,9 @@ void KisLayer::fillMergedLayerTemplate(KisLayerSP dstLayer, KisLayerSP prevLayer
         if (!skipPaintingThisLayer) {
             //Paint layer on the copy
             KisPainter gc(mergedDevice);
+            if (clipping) {
+                gc.setChannelFlags(mergedDevice->colorSpace()->channelFlags(true, false));
+            }
             gc.bitBlt(layerProjectionExtent.topLeft(), this->projection(), layerProjectionExtent);
         }
     }
@@ -499,6 +550,11 @@ void KisLayer::updateClones(const QRect &rect, bool dontInvalidateFrames)
 void KisLayer::notifyChildMaskChanged()
 {
     m_d->masksCache.setDirty();
+    if (clippingEnabled()) {
+        if (KisNodeSP base = findClippingBase()) {
+            base->setDirty(extent());
+        }
+    }
 }
 
 KisSelectionMaskSP KisLayer::selectionMask() const

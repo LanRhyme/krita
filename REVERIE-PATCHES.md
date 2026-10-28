@@ -1,0 +1,33 @@
+# ReveriePaint 引擎补丁层
+
+这个分支（`reverie-android`）是 ReveriePaint 使用的 Krita 引擎 fork。
+它相对 KDE 上游只做必要改动，把 Android 构建适配与引擎所需的少量增强集中在下面这些提交里。
+
+- 应用仓库：<https://github.com/LanRhyme/ReveriePaint>
+- 补丁系列（可 `git am`）：`patches/krita/0001..000N`
+- 同步手册与冲突策略：`docs/KRITA-SYNC.md`、`patches/krita/HOOKS.md`（在应用仓库里）
+
+## 提交清单
+
+| # | 提交 | 作用 |
+|---|---|---|
+| 1 | `feat(android)` | 14 个笔刷引擎静态注册（Android 无法 dlopen 插件）+ Android 构建/平台适配；`if(ANDROID)` 下禁用 LibAV |
+| 2 | `fix(roundmarker)` | KisMarkerPainter 改用标准覆盖混合，圆头笔反复落笔不再越画越深 |
+| 3 | `fix(swap)` | 多步撤销时 Swap 槽位耗尽不再 qFatal，抬高软限制阈值 |
+| 4 | `fix(roundmarker)` | 边缘像素改用 COMPOSITE_OVER，消除笔画交叉处白边 |
+| 5 | `feat(clipping)` | 剪切蒙版引擎支持（链表检索、基底定位、递归投影、KRA/PSD 落盘与读回） |
+| 6 | `feat(mypaint)` | MyPaint 静态注册与 Android 构建支持 |
+| 7 | `fix(mypaint)` | 传感器连接懒初始化，修复 Android 上 dlopen 阶段崩溃 |
+| 8 | `fix(build)` | `kis_lockless_stack.h` 补 `<QtGlobal>`，修 Qt 6.6 下 `Q_DISABLE_COPY` 未定义 |
+| 9 | `fix(android)` | 视频编码器空实现桩（Android 无 MLT / FFmpeg），修复 `libkritaui` 链接 |
+
+## 稳定契约（同步上游时这些入口必须还在）
+
+- 剪切蒙版：`KisLayer::enableClippingLayer()`、`KisNode` 的剪切链表检索、
+  `KisLayerProjectionPlane` 的递归合成、KRA/PSD 的 `clipping` 读写
+- Android：`plugins/paintops/*/register_static.cpp` 15 个、`libs/ui/animation/KisMediaEncoderRunnables_stub.cpp`、
+  根 `CMakeLists.txt` 的 LibAV 禁用段、`libs/ui/CMakeLists.txt` 的 ANDROID 源列表
+- 笔刷/存储：`kis_marker_painter.cpp` 的 COMPOSITE_OVER、swap 分配器不 qFatal、
+  `kis_lockless_stack.h` 的 QtGlobal 包含
+
+同步流程与自动校验脚本见应用仓库的 `docs/KRITA-SYNC.md`（`scripts/check_krita_sync.sh`）。
